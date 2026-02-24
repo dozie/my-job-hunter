@@ -22,6 +22,10 @@ const envSchema = z.object({
   SMTP_USER: z.string().optional(),
   SMTP_PASS: z.string().optional(),
   EMAIL_TO: z.string().optional(),
+
+  // Adzuna (optional — Phase 4)
+  ADZUNA_APP_ID: z.string().optional(),
+  ADZUNA_APP_KEY: z.string().optional(),
 });
 
 export type Env = z.infer<typeof envSchema>;

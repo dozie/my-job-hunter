@@ -10,6 +10,17 @@ ashby:
     - { name: "notion", label: "Notion" }
     - { name: "linear", label: "Linear" }
 
+adzuna:
+  enabled: false  # Requires ADZUNA_APP_ID and ADZUNA_APP_KEY env vars
+  boards:
+    - { name: "Canada Software", country: "ca", keywords: "software engineer" }
+    - { name: "US Software", country: "us", keywords: "software engineer" }
+
+remotive:
+  enabled: false  # Rate-limited: 2 req/min, keep board count low
+  boards:
+    - { name: "Software Dev", category: "software-dev" }
+
 # Role keyword filters (case-insensitive)
 filters:
   exclude_titles:

@@ -4,7 +4,7 @@ A personal job-hunting automation system that retrieves software engineering job
 
 ## Features
 
-- **Multi-source ingestion** — Fetches jobs from Greenhouse and Ashby job board APIs (free, no auth required)
+- **Multi-source ingestion** — Fetches jobs from Greenhouse, Ashby, Adzuna, and Remotive APIs
 - **Smart filtering** — Two-pass title filter (exclude frontend, include SE keywords) + location/remote filter
 - **AI-powered scoring** — Claude Haiku extracts metadata; Sonnet generates match summaries (score threshold-gated); weighted scoring ranks jobs 0–10
 - **Resume tailoring** — Claude Opus rewrites your resume bullets to match each JD, outputs styled HTML
@@ -54,7 +54,9 @@ src/
 │   └── providers/
 │       ├── base.ts             # JobProvider interface
 │       ├── greenhouse.ts       # Greenhouse Job Board API
-│       └── ashby.ts            # Ashby Posting API
+│       ├── ashby.ts            # Ashby Posting API
+│       ├── adzuna.ts           # Adzuna job aggregator API
+│       └── remotive.ts         # Remotive remote jobs API
 ├── scoring/
 │   ├── analyzer.ts             # Claude Haiku metadata extraction
 │   ├── summarizer.ts           # Claude Sonnet match summaries
@@ -99,6 +101,7 @@ src/
 - Anthropic API key
 - (Optional) Google Cloud service account for Sheets/Drive export
 - (Optional) Gmail app password for email summaries
+- (Optional) Adzuna API credentials for Adzuna provider
 
 ### 1. Clone and install
 
@@ -131,6 +134,16 @@ ashby:
   boards:
     - { name: "notion", label: "Notion" }
     - { name: "linear", label: "Linear" }
+
+adzuna:
+  enabled: false  # Requires ADZUNA_APP_ID + ADZUNA_APP_KEY
+  boards:
+    - { name: "Canada Software", country: "ca", keywords: "software engineer" }
+
+remotive:
+  enabled: false  # Rate-limited: 2 req/min
+  boards:
+    - { name: "Software Dev", category: "software-dev" }
 ```
 
 ### 4. Configure scoring
@@ -222,6 +235,25 @@ Required for `/export`, `/apply`, `/status` Sheets sync, and Drive resume upload
    - Set as `GOOGLE_DRIVE_FOLDER_ID`
    - Share the folder with the service account email (Editor)
 
+## Adzuna Setup (Optional)
+
+Required if you enable the `adzuna` provider in `config/providers.yml`.
+
+1. Sign up at [developer.adzuna.com](https://developer.adzuna.com/)
+2. From the dashboard, copy your **Application ID** and **Application Key**
+3. Set in `.env`:
+   ```
+   ADZUNA_APP_ID=your_app_id
+   ADZUNA_APP_KEY=your_app_key
+   ```
+4. Enable in `config/providers.yml`: set `adzuna.enabled: true`
+
+Note: Adzuna provides description snippets only (not full JDs), which may result in less precise AI scoring compared to other providers.
+
+## Remotive Setup (Optional)
+
+No credentials needed — just enable in `config/providers.yml`: set `remotive.enabled: true`. All Remotive jobs are remote. Rate-limited to 2 requests/minute, so keep the board count low.
+
 ## Email Setup (Optional)
 
 Required for `/export --email` email summaries.
@@ -236,10 +268,6 @@ Required for `/export --email` email summaries.
    SMTP_PASS=your-app-password
    EMAIL_TO=recipient@email.com
    ```
-
-## Roadmap
-
-- **Phase 4**: Adzuna + Remotive providers
 
 ## License
 

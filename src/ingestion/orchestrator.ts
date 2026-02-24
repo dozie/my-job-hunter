@@ -7,6 +7,9 @@ import { loadProvidersConfig } from '../config/providers.js';
 import type { JobProvider, RawJob } from './providers/base.js';
 import { GreenhouseProvider } from './providers/greenhouse.js';
 import { AshbyProvider } from './providers/ashby.js';
+import { AdzunaProvider } from './providers/adzuna.js';
+import { RemotiveProvider } from './providers/remotive.js';
+import { env } from '../config/env.js';
 import { passesRoleFilter, passesLocationFilter } from './filters.js';
 import { normalizeJobs } from './normalizer.js';
 import { analyzeJob } from '../scoring/analyzer.js';
@@ -44,6 +47,16 @@ function buildProviders(): JobProvider[] {
   }
   if (config.ashby.enabled && config.ashby.boards.length > 0) {
     providers.push(new AshbyProvider(config.ashby.boards));
+  }
+  if (config.adzuna.enabled && config.adzuna.boards.length > 0) {
+    if (env.ADZUNA_APP_ID && env.ADZUNA_APP_KEY) {
+      providers.push(new AdzunaProvider(config.adzuna.boards, env.ADZUNA_APP_ID, env.ADZUNA_APP_KEY));
+    } else {
+      log.warn('Adzuna enabled but ADZUNA_APP_ID/ADZUNA_APP_KEY not set — skipping');
+    }
+  }
+  if (config.remotive.enabled && config.remotive.boards.length > 0) {
+    providers.push(new RemotiveProvider(config.remotive.boards));
   }
 
   return providers;
