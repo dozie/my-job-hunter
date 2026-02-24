@@ -1,0 +1,39 @@
+greenhouse:
+  enabled: true
+  boards:
+    - { token: "shopify", name: "Shopify" }
+    - { token: "stripe", name: "Stripe" }
+
+ashby:
+  enabled: true
+  boards:
+    - { name: "notion", label: "Notion" }
+    - { name: "linear", label: "Linear" }
+
+# Role keyword filters (case-insensitive)
+filters:
+  exclude_titles:
+    - frontend
+    - front-end
+    - front end
+    - ui engineer
+    - ux engineer
+  include_titles:
+    - software
+    - engineer
+    - developer
+    - swe
+    - backend
+    - back-end
+    - fullstack
+    - full-stack
+    - full stack
+    - platform
+  location_keywords:
+    - toronto
+    - canada
+    - remote
+  remote_indicators:
+    - remote
+    - work from anywhere
+    - distributed

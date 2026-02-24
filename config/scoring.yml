@@ -1,0 +1,21 @@
+weights:
+  remote_eligible: 3.0
+  seniority_match: 2.5
+  employer_location: 1.5
+  interview_style: 1.5
+  role_type: 1.5
+
+role_type_preferences:
+  backend: 1.0
+  platform: 1.0
+  software_engineer: 0.8
+  fullstack: 0.3
+
+interview_preferences:
+  assignment: 1.0
+  unknown: 0.5
+  leetcode: 0.0
+
+target_seniority:
+  - senior
+  - mid
