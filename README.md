@@ -9,7 +9,11 @@ A personal job-hunting automation system that retrieves software engineering job
 - **AI-powered scoring** — Claude Haiku extracts metadata; Sonnet generates match summaries (score threshold-gated); weighted scoring ranks jobs 0–10
 - **Resume tailoring** — Claude Opus rewrites your resume bullets to match each JD, outputs styled HTML
 - **Cover letters & "Why us?"** — On-demand AI generation, cached to avoid duplicate cost
-- **Discord bot** — 7 slash commands with paginated embeds
+- **Google Sheets export** — Export jobs and track applications in a Google Sheet
+- **Google Drive resume storage** — Auto-upload tailored resumes to Drive with shareable links
+- **Application tracking** — Track application status (applied → interviewing → offer/rejected) in DB + Sheets
+- **Email summaries** — Send HTML email digest of exported jobs via SMTP
+- **Discord bot** — 10 slash commands with paginated embeds
 - **Scheduled runs** — Ingests every 4 hours (06:00–18:00 ET) via node-cron
 - **Deduplication** — Unique constraint on `(external_id, provider)` prevents duplicates
 - **Stale job expiry** — Jobs older than 30 days are auto-marked stale
@@ -22,6 +26,8 @@ A personal job-hunting automation system that retrieves software engineering job
 | Discord | discord.js v14 |
 | Database | PostgreSQL 16 + Drizzle ORM |
 | AI | @anthropic-ai/sdk (Haiku, Sonnet, Opus) |
+| Export | google-spreadsheet v5 + googleapis (Drive) |
+| Email | nodemailer (SMTP) |
 | Scheduler | node-cron v3 |
 | Logging | pino |
 | Config | YAML (scoring/providers) + .env (secrets) |
@@ -60,6 +66,10 @@ src/
 │   ├── template.ts             # HTML resume template (grey sidebar)
 │   ├── cover-letter.ts         # Cover letter generator
 │   └── why-company.ts          # "Why this company?" generator
+├── export/
+│   ├── sheets.ts               # Google Sheets client (append/update)
+│   ├── drive.ts                # Google Drive resume upload
+│   └── email.ts                # SMTP email summary
 ├── discord/
 │   ├── bot.ts                  # Client setup + command registration
 │   ├── embeds.ts               # Job card embed builder
@@ -71,7 +81,10 @@ src/
 │       ├── tailor.ts           # /tailor [jobId]
 │       ├── generate-cover.ts   # /generate-cover [jobId]
 │       ├── generate-response.ts # /generate-response [jobId]
-│       └── rescore.ts          # /rescore
+│       ├── rescore.ts          # /rescore
+│       ├── export.ts           # /export [mode] [count] [email]
+│       ├── apply.ts            # /apply [jobId] [notes]
+│       └── status.ts           # /status [jobId] [status] [notes]
 └── observability/
     └── logger.ts               # pino structured logging
 ```
@@ -84,6 +97,8 @@ src/
 - PostgreSQL 16 (or use Docker Compose)
 - Discord bot token + guild
 - Anthropic API key
+- (Optional) Google Cloud service account for Sheets/Drive export
+- (Optional) Gmail app password for email summaries
 
 ### 1. Clone and install
 
@@ -166,6 +181,14 @@ Jobs are scored 0–10 using a weighted formula:
 | `/generate-cover` | `jobid` (required), `force` (optional) | Generate a cover letter tailored to the job (Claude Opus). Cached by default. |
 | `/generate-response` | `jobid` (required), `force` (optional) | Generate a "Why this company?" response for an application (Claude Opus). Cached by default. |
 
+### Export & Tracking
+
+| Command | Options | Description |
+|---------|---------|-------------|
+| `/export` | `mode` (top/next/all), `count` (default 25), `email` (optional) | Export unexported jobs to Google Sheets. `top` = highest scoring, `next` = next batch by cursor, `all` = everything. Optionally sends email summary. |
+| `/apply` | `jobid` (required), `notes` (optional) | Mark a job as applied. Creates application record in DB and syncs to Google Sheets "Applications" tab with resume Drive link (if available). |
+| `/status` | `jobid` (required), `status` (applied/interviewing/rejected/offer), `notes` (optional) | Update application status in DB + Google Sheets. |
+
 ### System
 
 | Command | Options | Description |
@@ -179,9 +202,43 @@ Jobs are scored 0–10 using a weighted formula:
 - **On-demand only**: Opus calls (`/tailor`, `/generate-cover`, `/generate-response`) only fire when you explicitly request them
 - **Estimated cost**: Haiku ~$0.001/job, Sonnet ~$0.005/job (threshold-gated), Opus ~$0.03/use
 
+## Google Cloud Setup (Optional)
+
+Required for `/export`, `/apply`, `/status` Sheets sync, and Drive resume upload.
+
+1. Go to [Google Cloud Console](https://console.cloud.google.com/) → Create a project (e.g., "Job Hunter")
+2. Enable **Google Sheets API** and **Google Drive API**
+3. Go to **IAM & Admin → Service Accounts** → Create a service account
+4. Go to the **Keys** tab → **Add Key → Create new key → JSON** → Download
+5. From the JSON file:
+   - `client_email` → set as `GOOGLE_SERVICE_ACCOUNT_EMAIL`
+   - `private_key` → set as `GOOGLE_PRIVATE_KEY`
+6. Create a Google Sheet (e.g., "Job Hunter Tracker"):
+   - Copy the Sheet ID from the URL (`https://docs.google.com/spreadsheets/d/<SHEET_ID>/edit`)
+   - Set as `GOOGLE_SHEET_ID`
+   - Share the sheet with the service account email (Editor)
+7. Create a Google Drive folder (e.g., "Job Hunter Resumes"):
+   - Copy the Folder ID from the URL (`https://drive.google.com/drive/folders/<FOLDER_ID>`)
+   - Set as `GOOGLE_DRIVE_FOLDER_ID`
+   - Share the folder with the service account email (Editor)
+
+## Email Setup (Optional)
+
+Required for `/export --email` email summaries.
+
+1. Use Gmail with an [App Password](https://myaccount.google.com/apppasswords):
+   - Enable 2-Step Verification on your Google account
+   - Generate an app password for "Mail"
+2. Set in `.env`:
+   ```
+   SMTP_HOST=smtp.gmail.com
+   SMTP_USER=your-email@gmail.com
+   SMTP_PASS=your-app-password
+   EMAIL_TO=recipient@email.com
+   ```
+
 ## Roadmap
 
-- **Phase 3**: Google Sheets export, Drive resume storage, application tracking (`/apply`, `/status`, `/export`)
 - **Phase 4**: Adzuna + Remotive providers
 
 ## License

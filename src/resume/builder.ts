@@ -7,6 +7,7 @@ import { db } from '../db/client.js';
 import { jobs, resumes } from '../db/schema.js';
 import { tailorResume } from './tailorer.js';
 import { renderResumeHtml } from './renderer.js';
+import { isDriveConfigured, uploadResume } from '../export/drive.js';
 import { logger } from '../observability/logger.js';
 
 const log = logger.child({ module: 'resume:builder' });
@@ -64,6 +65,7 @@ export interface BuildResumeResult {
   html: string;
   jsonData: ResumeData;
   cached: boolean;
+  driveLink: string | null;
 }
 
 export async function buildResume(
@@ -84,6 +86,7 @@ export async function buildResume(
         html: existing[0].html,
         jsonData: existing[0].jsonData as ResumeData,
         cached: true,
+        driveLink: existing[0].driveLink ?? null,
       };
     }
   }
@@ -114,6 +117,19 @@ export async function buildResume(
     jsonData: tailored as Record<string, unknown>,
   });
 
+  // Upload to Google Drive if configured
+  let driveLink: string | null = null;
+  if (isDriveConfigured()) {
+    try {
+      const result = await uploadResume(html, job.company, job.title);
+      driveLink = result.webViewLink;
+      await db.update(resumes).set({ driveLink }).where(eq(resumes.jobId, jobId));
+      log.info({ jobId, driveLink }, 'Resume uploaded to Google Drive');
+    } catch (err) {
+      log.error({ err, jobId }, 'Failed to upload resume to Drive — resume saved locally');
+    }
+  }
+
   log.info({ jobId }, 'Resume built and stored');
-  return { html, jsonData: tailored, cached: false };
+  return { html, jsonData: tailored, cached: false, driveLink };
 }

@@ -10,6 +10,18 @@ const envSchema = z.object({
   LOG_LEVEL: z.enum(['trace', 'debug', 'info', 'warn', 'error', 'fatal']).default('info'),
   NODE_ENV: z.enum(['development', 'production']).default('development'),
   RUN_INGESTION_ON_STARTUP: z.string().transform(v => v === 'true').default('false'),
+
+  // Google Sheets & Drive (optional — Phase 3)
+  GOOGLE_SERVICE_ACCOUNT_EMAIL: z.string().optional(),
+  GOOGLE_PRIVATE_KEY: z.string().optional(),
+  GOOGLE_SHEET_ID: z.string().optional(),
+  GOOGLE_DRIVE_FOLDER_ID: z.string().optional(),
+
+  // Email (optional — Phase 3)
+  SMTP_HOST: z.string().optional(),
+  SMTP_USER: z.string().optional(),
+  SMTP_PASS: z.string().optional(),
+  EMAIL_TO: z.string().optional(),
 });
 
 export type Env = z.infer<typeof envSchema>;

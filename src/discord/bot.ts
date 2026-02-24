@@ -16,6 +16,9 @@ import { generateCoverCommand } from './commands/generate-cover.js';
 import { generateResponseCommand } from './commands/generate-response.js';
 import { jobCommand } from './commands/job.js';
 import { rescoreCommand } from './commands/rescore.js';
+import { exportCommand } from './commands/export.js';
+import { applyCommand } from './commands/apply.js';
+import { statusCommand } from './commands/status.js';
 
 const log = logger.child({ module: 'discord:bot' });
 
@@ -32,6 +35,9 @@ const commands: BotCommand[] = [
   generateResponseCommand,
   jobCommand,
   rescoreCommand,
+  exportCommand,
+  applyCommand,
+  statusCommand,
 ];
 const commandMap = new Collection<string, BotCommand>();
 
