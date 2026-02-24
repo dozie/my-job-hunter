@@ -11,6 +11,11 @@ import { env } from '../config/env.js';
 import { logger } from '../observability/logger.js';
 import { topjobsCommand } from './commands/topjobs.js';
 import { alljobsCommand } from './commands/alljobs.js';
+import { tailorCommand } from './commands/tailor.js';
+import { generateCoverCommand } from './commands/generate-cover.js';
+import { generateResponseCommand } from './commands/generate-response.js';
+import { jobCommand } from './commands/job.js';
+import { rescoreCommand } from './commands/rescore.js';
 
 const log = logger.child({ module: 'discord:bot' });
 
@@ -19,7 +24,15 @@ export interface BotCommand {
   execute: (interaction: ChatInputCommandInteraction) => Promise<void>;
 }
 
-const commands: BotCommand[] = [topjobsCommand, alljobsCommand];
+const commands: BotCommand[] = [
+  topjobsCommand,
+  alljobsCommand,
+  tailorCommand,
+  generateCoverCommand,
+  generateResponseCommand,
+  jobCommand,
+  rescoreCommand,
+];
 const commandMap = new Collection<string, BotCommand>();
 
 for (const cmd of commands) {

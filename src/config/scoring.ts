@@ -25,8 +25,8 @@ const CONFIG_PATH = resolve(__dirname, '../../config/scoring.yml');
 
 let _config: ScoringConfig | null = null;
 
-export function loadScoringConfig(): ScoringConfig {
-  if (_config) return _config;
+export function loadScoringConfig(bypassCache = false): ScoringConfig {
+  if (_config && !bypassCache) return _config;
 
   const log = logger.child({ module: 'config:scoring' });
   try {

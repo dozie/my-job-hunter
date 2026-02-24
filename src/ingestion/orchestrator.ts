@@ -11,6 +11,7 @@ import { passesRoleFilter, passesLocationFilter } from './filters.js';
 import { normalizeJobs } from './normalizer.js';
 import { analyzeJob } from '../scoring/analyzer.js';
 import { scoreJob } from '../scoring/scorer.js';
+import { shouldGenerateSummary, generateSummary } from '../scoring/summarizer.js';
 import { logger } from '../observability/logger.js';
 
 const log = logger.child({ module: 'orchestrator' });
@@ -89,6 +90,12 @@ async function scoreNewJobs(newJobs: NewJob[]): Promise<number> {
         const metadata = await analyzeJob(job.title, job.description);
         const result = scoreJob(metadata, job.location ?? undefined);
 
+        // Generate Sonnet summary only for high-scoring jobs (cost optimization)
+        let summary: string | null = null;
+        if (shouldGenerateSummary(result.score)) {
+          summary = await generateSummary(job.title, job.description, metadata);
+        }
+
         await db
           .update(jobs)
           .set({
@@ -97,6 +104,7 @@ async function scoreNewJobs(newJobs: NewJob[]): Promise<number> {
             score: String(result.score),
             scoreBreakdown: result.breakdown,
             remoteEligible: metadata.remote_eligible,
+            summary,
           })
           .where(
             and(

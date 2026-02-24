@@ -49,6 +49,34 @@ export const ingestionLogs = pgTable('ingestion_logs', {
   ranAt: timestamp('ran_at', { withTimezone: true }).defaultNow(),
 });
 
+export const resumes = pgTable('resumes', {
+  id: serial('id').primaryKey(),
+  jobId: integer('job_id').references(() => jobs.id),
+  html: text('html').notNull(),
+  jsonData: jsonb('json_data'),
+  driveLink: text('drive_link'),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
+});
+
+export const coverLetters = pgTable('cover_letters', {
+  id: serial('id').primaryKey(),
+  jobId: integer('job_id').references(() => jobs.id),
+  content: text('content').notNull(),
+  type: text('type').default('cover_letter'),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
+});
+
+export const applications = pgTable('applications', {
+  id: serial('id').primaryKey(),
+  jobId: integer('job_id').references(() => jobs.id).unique(),
+  status: text('status').default('not_applied'),
+  notes: text('notes'),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow(),
+});
+
 export type Job = typeof jobs.$inferSelect;
 export type NewJob = typeof jobs.$inferInsert;
 export type IngestionLog = typeof ingestionLogs.$inferSelect;
+export type Resume = typeof resumes.$inferSelect;
+export type CoverLetter = typeof coverLetters.$inferSelect;
+export type Application = typeof applications.$inferSelect;
