@@ -21,6 +21,12 @@ remotive:
   boards:
     - { name: "Software Dev", category: "software-dev" }
 
+coresignal:
+  enabled: false  # Requires CORESIGNAL_API_KEY. Credit-based: 400 search + 200 collect on free tier (14 days).
+  boards:
+    - { name: "Canada Software Engineers", country: "Canada", keywords: "software engineer", employmentType: "Full-time", maxCollect: 50 }
+    - { name: "US Software Engineers", country: "United States", keywords: "software engineer", employmentType: "Full-time", maxCollect: 50 }
+
 # Role keyword filters (case-insensitive)
 filters:
   exclude_titles:

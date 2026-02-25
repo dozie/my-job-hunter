@@ -4,7 +4,7 @@ A personal job-hunting automation system that retrieves software engineering job
 
 ## Features
 
-- **Multi-source ingestion** — Fetches jobs from Greenhouse, Ashby, Adzuna, and Remotive APIs
+- **Multi-source ingestion** — Fetches jobs from Greenhouse, Ashby, Adzuna, Remotive, and Coresignal APIs
 - **Smart filtering** — Two-pass title filter (exclude frontend, include SE keywords) + location/remote filter
 - **AI-powered scoring** — Claude Haiku extracts metadata; Sonnet generates match summaries (score threshold-gated); weighted scoring ranks jobs 0–10
 - **Resume tailoring** — Claude Opus rewrites your resume bullets to match each JD, outputs styled HTML
@@ -56,7 +56,8 @@ src/
 │       ├── greenhouse.ts       # Greenhouse Job Board API
 │       ├── ashby.ts            # Ashby Posting API
 │       ├── adzuna.ts           # Adzuna job aggregator API
-│       └── remotive.ts         # Remotive remote jobs API
+│       ├── remotive.ts         # Remotive remote jobs API
+│       └── coresignal.ts       # Coresignal Base Jobs API (search + collect)
 ├── scoring/
 │   ├── analyzer.ts             # Claude Haiku metadata extraction
 │   ├── summarizer.ts           # Claude Sonnet match summaries
@@ -102,6 +103,7 @@ src/
 - (Optional) Google Cloud service account for Sheets/Drive export
 - (Optional) Gmail app password for email summaries
 - (Optional) Adzuna API credentials for Adzuna provider
+- (Optional) Coresignal API key for Coresignal provider
 
 ### 1. Clone and install
 
@@ -144,6 +146,11 @@ remotive:
   enabled: false  # Rate-limited: 2 req/min
   boards:
     - { name: "Software Dev", category: "software-dev" }
+
+coresignal:
+  enabled: false  # Requires CORESIGNAL_API_KEY, credit-based
+  boards:
+    - { name: "Canada Software Engineers", country: "Canada", keywords: "software engineer", employmentType: "Full-time", maxCollect: 50 }
 ```
 
 ### 4. Configure scoring
@@ -213,6 +220,7 @@ Jobs are scored 0–10 using a weighted formula:
 - **Score threshold**: Sonnet summaries only generated for jobs scoring >= 5.0/10
 - **Caching**: Resume, cover letter, and "why us" results are cached in DB — calling the same command twice returns the cached version at zero cost
 - **On-demand only**: Opus calls (`/tailor`, `/generate-cover`, `/generate-response`) only fire when you explicitly request them
+- **Coresignal credit cap**: Each board has a configurable `maxCollect` limit (default 50) to prevent runaway collect credit usage
 - **Estimated cost**: Haiku ~$0.001/job, Sonnet ~$0.005/job (threshold-gated), Opus ~$0.03/use
 
 ## Google Cloud Setup (Optional)
@@ -253,6 +261,38 @@ Note: Adzuna provides description snippets only (not full JDs), which may result
 ## Remotive Setup (Optional)
 
 No credentials needed — just enable in `config/providers.yml`: set `remotive.enabled: true`. All Remotive jobs are remote. Rate-limited to 2 requests/minute, so keep the board count low.
+
+## Coresignal Setup (Optional)
+
+Required if you enable the `coresignal` provider in `config/providers.yml`.
+
+1. Sign up at [coresignal.com](https://coresignal.com/) for a free trial (400 search + 200 collect credits, 14 days)
+2. From the dashboard, copy your **API Key**
+3. Set in `.env`:
+   ```
+   CORESIGNAL_API_KEY=your_api_key
+   ```
+4. Enable in `config/providers.yml`: set `coresignal.enabled: true`
+5. Configure boards with filters:
+   ```yaml
+   coresignal:
+     enabled: true
+     boards:
+       - { name: "Canada Software Engineers", country: "Canada", keywords: "software engineer", employmentType: "Full-time", maxCollect: 50 }
+   ```
+
+**Credit usage per ingestion run:**
+- Each board uses 1–3 search credits (pagination) + up to `maxCollect` collect credits
+- Default `maxCollect` is 50 per board if not specified
+- Free tier: 400 search + 200 collect credits — keep total `maxCollect` across all boards under 200
+
+| Board Config | Required | Description |
+|-------------|----------|-------------|
+| `name` | Yes | Display name for logging |
+| `country` | No | Filter by country (e.g. "United States", "Canada") |
+| `keywords` | No | Filter by job title keywords |
+| `employmentType` | No | "Full-time", "Part-time", "Contract", etc. |
+| `maxCollect` | No | Max records to collect per board (default: 50) |
 
 ## Email Setup (Optional)
 

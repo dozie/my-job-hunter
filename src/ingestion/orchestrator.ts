@@ -9,6 +9,7 @@ import { GreenhouseProvider } from './providers/greenhouse.js';
 import { AshbyProvider } from './providers/ashby.js';
 import { AdzunaProvider } from './providers/adzuna.js';
 import { RemotiveProvider } from './providers/remotive.js';
+import { CoresignalProvider } from './providers/coresignal.js';
 import { env } from '../config/env.js';
 import { passesRoleFilter, passesLocationFilter } from './filters.js';
 import { normalizeJobs } from './normalizer.js';
@@ -57,6 +58,13 @@ function buildProviders(): JobProvider[] {
   }
   if (config.remotive.enabled && config.remotive.boards.length > 0) {
     providers.push(new RemotiveProvider(config.remotive.boards));
+  }
+  if (config.coresignal.enabled && config.coresignal.boards.length > 0) {
+    if (env.CORESIGNAL_API_KEY) {
+      providers.push(new CoresignalProvider(config.coresignal.boards, env.CORESIGNAL_API_KEY));
+    } else {
+      log.warn('Coresignal enabled but CORESIGNAL_API_KEY not set — skipping');
+    }
   }
 
   return providers;

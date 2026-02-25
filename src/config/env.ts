@@ -26,6 +26,9 @@ const envSchema = z.object({
   // Adzuna (optional — Phase 4)
   ADZUNA_APP_ID: z.string().optional(),
   ADZUNA_APP_KEY: z.string().optional(),
+
+  // Coresignal (optional — needed if coresignal provider is enabled in providers.yml)
+  CORESIGNAL_API_KEY: z.string().optional(),
 });
 
 export type Env = z.infer<typeof envSchema>;

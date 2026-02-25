@@ -12,6 +12,8 @@ const boardSchema = z.object({
   country: z.string().optional(),
   keywords: z.string().optional(),
   category: z.string().optional(),
+  employmentType: z.string().optional(),
+  maxCollect: z.number().int().positive().optional(),
 });
 
 const filtersSchema = z.object({
@@ -35,6 +37,10 @@ const providersConfigSchema = z.object({
     boards: z.array(boardSchema),
   }),
   remotive: z.object({
+    enabled: z.boolean(),
+    boards: z.array(boardSchema),
+  }),
+  coresignal: z.object({
     enabled: z.boolean(),
     boards: z.array(boardSchema),
   }),
@@ -64,6 +70,7 @@ export function loadProvidersConfig(): ProvidersConfig {
         ashby: _config.ashby.boards.length,
         adzuna: _config.adzuna.boards.length,
         remotive: _config.remotive.boards.length,
+        coresignal: _config.coresignal.boards.length,
       },
       'Providers config loaded',
     );
