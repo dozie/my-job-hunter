@@ -45,7 +45,7 @@
 | Scheduler          | node-cron v3                      | Simple, timezone support, `noOverlap` option    |
 | LLM                | @anthropic-ai/sdk                 | Official Claude SDK for TypeScript              |
 | Logging            | pino                              | Structured JSON logging, fast                   |
-| Google Sheets      | google-spreadsheet v4             | Simplified Sheets API v4 wrapper                |
+| Google Sheets      | google-spreadsheet v5             | Simplified Sheets API v4 wrapper                |
 | Google Drive       | googleapis (drive v3)             | Upload tailored resumes, generate shareable links|
 | Email              | nodemailer                        | Standard Node.js email sending                  |
 | Config             | YAML (scoring) + .env (secrets)   | Human-readable weights, secure secrets          |
@@ -63,60 +63,63 @@ my-job-hunter/
 │   ├── index.ts                    # Entry point: init bot, scheduler, DB
 │   ├── config/
 │   │   ├── env.ts                  # Environment variable loading + validation
-│   │   └── scoring.ts              # Load scoring weights from YAML
+│   │   ├── scoring.ts              # Load scoring weights from YAML
+│   │   └── providers.ts            # Load + validate providers.yml config
 │   ├── db/
 │   │   ├── schema.ts               # Drizzle table definitions
 │   │   ├── migrate.ts              # Migration runner
 │   │   └── client.ts               # DB connection pool
 │   ├── ingestion/
-│   │   ├── scheduler.ts            # node-cron schedule (every 4h, 06:00-19:30)
-│   │   ├── orchestrator.ts         # Run all providers, deduplicate, store
+│   │   ├── scheduler.ts            # node-cron schedule (every 4h, 06:00-18:00 ET)
+│   │   ├── orchestrator.ts         # Priority-tiered ingestion + dedup + score
 │   │   ├── providers/
 │   │   │   ├── base.ts             # JobProvider interface
 │   │   │   ├── greenhouse.ts       # Greenhouse Job Board API
 │   │   │   ├── ashby.ts            # Ashby Posting API
-│   │   │   ├── adzuna.ts           # Adzuna API (Tier 2)
-│   │   │   └── remotive.ts         # Remotive API (Tier 2)
+│   │   │   ├── adzuna.ts           # Adzuna job aggregator API
+│   │   │   ├── remotive.ts         # Remotive remote jobs API
+│   │   │   ├── coresignal.ts       # Coresignal Base Jobs API (search + collect)
+│   │   │   └── brightdata.ts       # Bright Data Jobs Scraper (LinkedIn, Indeed, Glassdoor)
 │   │   ├── filters.ts              # Role keyword filter + location/remote filter
-│   │   ├── rate-limiter.ts         # Token bucket rate limiter for providers
-│   │   └── normalizer.ts           # Normalize provider responses → Job schema
+│   │   └── normalizer.ts           # Normalize provider responses → Job schema + canonical key
 │   ├── scoring/
 │   │   ├── scorer.ts               # Apply weighted scoring rules
-│   │   ├── analyzer.ts             # Claude API: extract structured job data
-│   │   └── summarizer.ts           # Claude API: generate match summaries
+│   │   ├── analyzer.ts             # Claude Haiku: extract structured job data
+│   │   └── summarizer.ts           # Claude Sonnet: generate match summaries (score-gated)
 │   ├── discord/
-│   │   ├── bot.ts                  # Discord client setup
+│   │   ├── bot.ts                  # Discord client setup + command registration
 │   │   ├── commands/
 │   │   │   ├── topjobs.ts          # /topjobs [limit]
 │   │   │   ├── alljobs.ts          # /alljobs [limit] [seniority]
-│   │   │   ├── export.ts           # /export top|next|all
-│   │   │   ├── tailor.ts           # /tailor [jobId]
-│   │   │   ├── generate-cover.ts   # /generate-cover [jobId]
+│   │   │   ├── export.ts           # /export top|next|all [count] [email]
+│   │   │   ├── tailor.ts           # /tailor [jobId] [force]
+│   │   │   ├── generate-cover.ts   # /generate-cover [jobId] [force]
+│   │   │   ├── generate-response.ts # /generate-response [jobId] [force]
 │   │   │   ├── job.ts              # /job [jobId]
-│   │   │   ├── apply.ts            # /apply [jobId]
-│   │   │   ├── status.ts           # /status [jobId] [status]
-│   │   │   └── rescore.ts          # /rescore
+│   │   │   ├── apply.ts            # /apply [jobId] [notes]
+│   │   │   ├── status.ts           # /status [jobId] [status] [notes]
+│   │   │   └── rescore.ts          # /rescore [with-summaries]
 │   │   ├── embeds.ts               # Job card embed builder
-│   │   ├── pagination.ts           # Paginated embed navigation
-│   │   └── alerts.ts               # Error/failure notifications
+│   │   └── pagination.ts           # Paginated embed navigation
 │   ├── resume/
-│   │   ├── builder.ts              # Orchestrate resume tailoring
-│   │   ├── tailorer.ts             # Claude API: reword tasks to match JD
-│   │   ├── template.ts             # Base resume JSON + HTML template
-│   │   └── renderer.ts             # Generate final HTML output
+│   │   ├── builder.ts              # Resume build orchestrator (cache + flow)
+│   │   ├── tailorer.ts             # Claude Opus: reword tasks to match JD
+│   │   ├── template.ts             # HTML resume template (grey sidebar)
+│   │   ├── renderer.ts             # JSON → HTML conversion
+│   │   ├── cover-letter.ts         # Cover letter generator (Claude Opus)
+│   │   └── why-company.ts          # "Why this company?" generator (Claude Opus)
 │   ├── export/
 │   │   ├── sheets.ts               # Google Sheets append (Jobs + Applications tabs)
-│   │   ├── drive.ts                # Google Drive upload for tailored resumes
-│   │   └── email.ts                # Email summary via nodemailer
+│   │   ├── drive.ts                # Google Drive resume upload
+│   │   └── email.ts                # SMTP email summary
 │   └── observability/
-│       ├── logger.ts               # pino logger setup with child loggers
-│       └── health.ts               # Health check + alert triggers
+│       └── logger.ts               # pino structured logging with child loggers
 ├── config/
 │   ├── scoring.yml                 # Scoring weights configuration
-│   ├── providers.yml               # Provider settings (companies to track, etc.)
+│   ├── providers.yml               # Provider boards + filter settings
 │   └── resume-base.json            # Base resume data (Reactive Resume schema)
-├── drizzle/                        # Generated migrations
-├── docker-compose.yml              # App + PostgreSQL + RR Printer
+├── drizzle/                        # Generated migrations (never hand-edit)
+├── docker-compose.yml              # App + PostgreSQL
 ├── Dockerfile                      # Multi-stage build
 ├── .env.example                    # Template for secrets
 ├── tsconfig.json
@@ -131,42 +134,37 @@ my-job-hunter/
 ```sql
 -- Jobs: source of truth for all retrieved jobs
 CREATE TABLE jobs (
-  id              SERIAL PRIMARY KEY,
-  external_id     TEXT NOT NULL,              -- Provider's job ID
-  provider        TEXT NOT NULL,              -- 'greenhouse', 'ashby', etc.
-  title           TEXT NOT NULL,
-  company         TEXT NOT NULL,
-  link            TEXT NOT NULL,
-  description     TEXT,                       -- Full JD snapshot
-  location        TEXT,
-  remote_eligible BOOLEAN DEFAULT FALSE,
-  seniority       TEXT,                       -- 'senior', 'mid', 'junior', 'unknown'
-  score           NUMERIC(4,2) DEFAULT 0,
-  score_breakdown JSONB,                      -- { remote: 3, seniority: 2, ... }
-  summary         TEXT,                       -- AI-generated match summary
-  interview_style TEXT DEFAULT 'unknown',     -- 'assignment', 'leetcode', 'unknown'
-  compensation    TEXT,                       -- Salary/compensation info (from Ashby, etc.)
-  export_status   TEXT DEFAULT 'pending',     -- 'pending', 'exported'
-  export_cursor   INTEGER DEFAULT 0,          -- Global export sequence number (0 = not exported)
-  is_stale        BOOLEAN DEFAULT FALSE,      -- Auto-set TRUE after 30 days
-  created_at      TIMESTAMPTZ DEFAULT NOW(),
-  updated_at      TIMESTAMPTZ DEFAULT NOW(),
-  UNIQUE(external_id, provider)               -- Deduplication key
+  id                      SERIAL PRIMARY KEY,
+  external_id             TEXT NOT NULL,              -- Provider's job ID
+  provider                TEXT NOT NULL,              -- 'greenhouse', 'ashby', 'coresignal', 'brightdata', etc.
+  title                   TEXT NOT NULL,
+  company                 TEXT NOT NULL,
+  link                    TEXT NOT NULL,
+  description             TEXT,                       -- Full JD snapshot (HTML stripped)
+  location                TEXT,
+  remote_eligible         BOOLEAN DEFAULT FALSE,
+  seniority               TEXT,                       -- 'senior', 'mid', 'junior', 'unknown'
+  score                   NUMERIC(4,2) DEFAULT 0,
+  score_breakdown         JSONB,                      -- { remote: 3, seniority: 2, ... }
+  summary                 TEXT,                       -- AI-generated match summary
+  interview_style         TEXT DEFAULT 'unknown',     -- 'assignment', 'leetcode', 'unknown'
+  compensation            TEXT,                       -- Salary/compensation info
+  canonical_key           TEXT,                       -- Cross-provider dedup key (normalized company::title::desc_hash)
+  likely_duplicate_of_id  INTEGER REFERENCES jobs(id),-- FK to primary job (NULL = this IS the primary)
+  export_status           TEXT DEFAULT 'pending',     -- 'pending', 'exported'
+  export_cursor           INTEGER DEFAULT 0,          -- Global export sequence number (0 = not exported)
+  is_stale                BOOLEAN DEFAULT FALSE,      -- Auto-set TRUE after 30 days
+  created_at              TIMESTAMPTZ DEFAULT NOW(),
+  updated_at              TIMESTAMPTZ DEFAULT NOW(),
+  UNIQUE(external_id, provider)                       -- Per-provider deduplication key
 );
-
--- Auto-update updated_at on row change
-CREATE OR REPLACE FUNCTION update_updated_at()
-RETURNS TRIGGER AS $$
-BEGIN NEW.updated_at = NOW(); RETURN NEW; END;
-$$ LANGUAGE plpgsql;
-
-CREATE TRIGGER jobs_updated_at BEFORE UPDATE ON jobs
-FOR EACH ROW EXECUTE FUNCTION update_updated_at();
 
 CREATE INDEX idx_jobs_score ON jobs(score DESC);
 CREATE INDEX idx_jobs_seniority ON jobs(seniority);
 CREATE INDEX idx_jobs_export_status ON jobs(export_status);
 CREATE INDEX idx_jobs_stale ON jobs(is_stale);
+CREATE INDEX idx_jobs_canonical_key ON jobs(canonical_key);
+CREATE INDEX idx_jobs_likely_duplicate ON jobs(likely_duplicate_of_id);
 
 -- Tailored resumes
 CREATE TABLE resumes (
@@ -239,31 +237,65 @@ interface RawJob {
 - `noOverlap: true` prevents concurrent runs
 - Timezone set to user's local (e.g., `America/Toronto`)
 
-**Orchestrator Flow**:
-1. Run each enabled provider in parallel (`Promise.allSettled`)
-2. Normalize raw jobs to common schema
+**Priority-Tiered Execution**:
+Providers run sequentially by priority tier. Within each tier, providers run in parallel via `Promise.allSettled`. Higher-priority tiers establish primacy for cross-provider deduplication.
+
+```
+Tier 1: Coresignal       (richest data — search + collect API)
+Tier 2: Bright Data       (LinkedIn, Indeed, Glassdoor scraping)
+Tier 3: Greenhouse, Ashby, Adzuna, Remotive  (direct company boards + aggregators)
+```
+
+**Orchestrator Flow** (per provider within each tier):
+1. Fetch raw jobs from provider
+2. Normalize raw jobs to common schema + compute `canonicalKey`
 3. **Filter by role**: Two-pass keyword filter on title (case-insensitive, configurable in `providers.yml`):
    - **Exclude** (discard immediately): `frontend`, `front-end`, `front end`, `UI engineer`, `UX engineer`
    - **Include** (keep): `software`, `engineer`, `developer`, `SWE`, `backend`, `back-end`, `fullstack`, `full-stack`, `full stack`, `platform`
    - Exclusion runs first — a "Frontend Software Engineer" is rejected
 4. **Filter by location/remote**: Keep only jobs where location contains `Toronto` or `Canada`, OR remote eligibility is indicated in the listing. Use keyword matching on location field + description scan for remote indicators (`remote`, `work from anywhere`, `distributed`).
-5. Deduplicate against DB using `(external_id, provider)` unique constraint
-6. Insert new jobs via `ON CONFLICT DO NOTHING`
-7. Queue new jobs for scoring
-8. Log results to `ingestion_logs` (include counts: total fetched, passed role filter, passed location filter, new inserts)
-9. Alert Discord on any provider failure
-10. **Stale job check**: After ingestion, mark jobs older than 30 days as `is_stale = TRUE`. Stale jobs are excluded from `/topjobs` and `/alljobs` by default (add `--include-stale` flag to show them).
+5. **Per-provider dedup**: Insert via `ON CONFLICT DO NOTHING` on `(external_id, provider)` unique constraint
+6. **Cross-provider soft dedup**: After inserting, check if a job with the same `canonicalKey` already exists from a different provider. If so, set `likelyDuplicateOfId` pointing to the existing (primary) job. The duplicate is kept in DB but hidden from display/export and skipped during scoring.
+7. Score new non-duplicate jobs (Haiku extraction + weighted formula + optional Sonnet summary)
+8. Log results to `ingestion_logs` (counts: fetched, role-filtered, location-filtered, inserted, duplicates, scored)
+9. **Stale job check**: After all tiers complete, mark jobs older than 30 days as `is_stale = TRUE`. Stale jobs are excluded from `/topjobs`, `/alljobs`, and `/export`.
 
-**Rate Limiting** (for Tier 2+ providers):
-- Per-provider configurable rate limit in `providers.yml` (e.g., `rate_limit: { requests: 2, per_seconds: 60 }`)
-- Simple token bucket implementation in `src/ingestion/rate-limiter.ts`
-- Remotive: 2 req/min. Adzuna: governed by API tier.
+**Cross-Provider Deduplication**:
+- **Canonical key format**: `normalizeCompany(company)::normalizeTitle(title)::descriptionFingerprint(description)`
+- Company normalization: lowercase, strip suffixes (Inc, Ltd, Corp, LLC, Co), collapse whitespace
+- Title normalization: lowercase, expand abbreviations (Sr. → Senior, Jr. → Junior), collapse whitespace
+- Description fingerprint: SHA-256 hash of first 500 chars of normalized description, truncated to 12 hex chars. If no description, uses `nodesc` (won't match jobs that do have a description)
+- **Soft dedup**: All jobs are inserted, duplicates are flagged with `likelyDuplicateOfId` FK, not deleted. Primary jobs (first seen) have `likelyDuplicateOfId = NULL`.
+- **Same-title detection**: When a job has the same company+title but a different description fingerprint (different team/role), it is logged at `warn` level but kept as a separate primary job
+- **Known tradeoff**: If providers describe the same role differently, both are kept (false negative). A few leaked duplicates are preferred over missing genuinely different roles.
 
-**Initial Providers** (both are **free, no auth/subscription required**):
-- **Greenhouse**: `GET https://boards-api.greenhouse.io/v1/boards/{token}/jobs?content=true` — the `{token}` is the company's public board name (visible in their careers URL, e.g. `shopify`). Configure a list of company tokens in `providers.yml`.
-- **Ashby**: `GET https://api.ashbyhq.com/posting-api/job-board/{name}?includeCompensation=true` — the `{name}` is the company's Ashby identifier. Configure company names in `providers.yml`.
+**Providers**:
 
-> You just add company names to a YAML config file. No API keys, no accounts, no cost.
+| Provider | Type | Auth | Cost | API Pattern |
+|----------|------|------|------|-------------|
+| Greenhouse | Company board | None (public) | Free | `GET /v1/boards/{token}/jobs?content=true` |
+| Ashby | Company board | None (public) | Free | `GET /posting-api/job-board/{name}?includeCompensation=true` |
+| Adzuna | Aggregator | API key | Free tier | `GET /v1/api/jobs/{country}/search` |
+| Remotive | Aggregator | None | Free (2 req/min) | `GET /api/remote-jobs?category={cat}` |
+| Coresignal | Data API | API key | Credit-based | Two-step: `POST /search/filter` → `GET /collect/{id}` |
+| Bright Data | Scraper API | API token | ~$1.50/1K records | Three-step: `POST /trigger` → `GET /progress/{id}` → `GET /snapshot/{id}` |
+
+**Coresignal** (`src/ingestion/providers/coresignal.ts`):
+- Credit-aware two-step fetch: search for job IDs (paginated) → collect individual job records
+- Configurable `maxCollect` per board (default 50) prevents runaway credit usage
+- Collects specific fields only (title, description, location, company, salary, seniority, etc.)
+- Filters out deleted/inactive listings before returning
+- Free trial: 400 search + 200 collect credits (14 days)
+
+**Bright Data** (`src/ingestion/providers/brightdata.ts`):
+- Async trigger → poll → download model for LinkedIn, Indeed, Glassdoor
+- Dataset IDs: LinkedIn (`gd_lpfll7v5hcqtkxl6l`), Indeed (`gd_l4dx9j9sscpvs7no2`), Glassdoor (`gd_lpfbbndm1xnopbrcr0`)
+- Polling: linear backoff (15s initial → 60s cap), 5-minute timeout per board
+- `maxCollect` per board maps to `limit_per_input` (default 100 records ≈ $0.15/board/run)
+- Board concurrency: 3 parallel snapshot triggers via `p-limit`
+- Cost estimate logged after each snapshot download
+- No auto-retry on trigger failure (prevents double-billing)
+- Source-specific field mapping (e.g., LinkedIn `job_posting_id` → externalId, Indeed `jobid` → externalId)
 
 ### 5.2 Scoring Service
 
@@ -317,7 +349,10 @@ Jobs you're most interested in (remote, backend, senior, assignment-based) score
 - Use `p-limit` or simple semaphore to cap concurrency
 - Prevents Claude API rate limit errors during large ingestion batches
 
-**Cost estimate**: ~$0.006 per job (Haiku extraction + Sonnet summary)
+**Cost Optimization**:
+- **Score threshold gating**: Sonnet summaries only generated for jobs scoring >= 5.0/10 (saves ~60% of Sonnet calls)
+- **Duplicate scoring skip**: Cross-provider duplicates (jobs with `likelyDuplicateOfId` set) are not sent to the AI scorer
+- **Estimated cost**: Haiku ~$0.001/job, Sonnet ~$0.005/job (threshold-gated), net ~$0.002/job average
 
 **Re-scoring** (`/rescore` command):
 - Triggered manually via Discord when scoring config weights are updated
@@ -332,17 +367,16 @@ Jobs you're most interested in (remote, backend, senior, assignment-based) score
 
 | Command | Description | Key Logic |
 |---------|-------------|-----------|
-| `/topjobs [limit]` | Top N jobs (default 10) | Query by score DESC, paginated embeds |
-| `/alljobs [limit] [seniority]` | All jobs, optional filter | Filter by seniority, paginated |
-| `/export top` | Export current top jobs | Push to Sheets, mark exported |
-| `/export next [count]` | Export next batch | Track `export_batch` for pagination |
-| `/export all` | Export everything | Bulk Sheets append |
-| `/tailor [jobId]` | Tailored resume | Trigger resume builder → return HTML |
-| `/generate-cover [jobId]` | Cover letter | Claude Opus → store + return |
-| `/apply [jobId]` | Mark job as applied | Create/update in DB + append to Sheets "Applications" tab |
-| `/status [jobId] [status]` | Update application status | Update DB + update Sheets row. Status: applied, interviewing, rejected, offer |
-| `/rescore` | Re-score all jobs | Re-run scoring with current config weights |
+| `/topjobs [limit]` | Top N jobs (default 10) | Query by score DESC, exclude stale + duplicates, paginated embeds |
+| `/alljobs [limit] [seniority]` | All jobs, optional filter | Filter by seniority, exclude stale + duplicates, paginated |
 | `/job [jobId]` | View full job details | Full description, score breakdown, compensation, application status |
+| `/export top\|next\|all [count] [email]` | Export to Google Sheets | Push unexported jobs to Sheets, optionally email summary |
+| `/tailor [jobId] [force]` | Tailored resume | Claude Opus → HTML resume → DB cache. Returns cached unless `force` |
+| `/generate-cover [jobId] [force]` | Cover letter | Claude Opus → store + return. Cached by default |
+| `/generate-response [jobId] [force]` | "Why this company?" response | Claude Opus → store + return. Cached by default |
+| `/apply [jobId] [notes]` | Mark job as applied | Create record in DB + append to Sheets "Applications" tab with resume link |
+| `/status [jobId] [status] [notes]` | Update application status | Update DB + Sheets row. Status: applied, interviewing, rejected, offer |
+| `/rescore [with-summaries]` | Re-score all jobs | Re-run scoring weights. Optionally regenerate Sonnet summaries |
 
 **Job Card Embed**:
 ```
@@ -401,7 +435,7 @@ Summary: Strong match — remote-friendly, assignment interview...
 ### 5.5 Export Service
 
 **Google Sheets** (two tabs in one spreadsheet):
-- Use `google-spreadsheet` v4 with service account credentials
+- Use `google-spreadsheet` v5 with service account credentials
 
 **Tab 1 — "Jobs"** (all exported jobs):
 - Columns: title, company, score, summary, link, seniority, interview_style, compensation, exported_at
@@ -504,14 +538,28 @@ DISCORD_TOKEN=
 DISCORD_GUILD_ID=
 DISCORD_ALERT_CHANNEL_ID=
 ANTHROPIC_API_KEY=
+
+# Google Sheets & Drive (optional)
 GOOGLE_SERVICE_ACCOUNT_EMAIL=
 GOOGLE_PRIVATE_KEY=
 GOOGLE_SHEET_ID=
 GOOGLE_DRIVE_FOLDER_ID=
+
+# Email (optional)
 SMTP_HOST=
 SMTP_USER=
 SMTP_PASS=
 EMAIL_TO=
+
+# Adzuna (optional — required if adzuna provider enabled)
+ADZUNA_APP_ID=
+ADZUNA_APP_KEY=
+
+# Coresignal (optional — required if coresignal provider enabled)
+CORESIGNAL_API_KEY=
+
+# Bright Data (optional — required if brightdata provider enabled)
+BRIGHTDATA_API_TOKEN=
 ```
 
 **`config/providers.yml`**:
@@ -521,7 +569,6 @@ greenhouse:
   boards:
     - { token: "shopify", name: "Shopify" }
     - { token: "stripe", name: "Stripe" }
-    # Add more companies as needed
 
 ashby:
   enabled: true
@@ -530,13 +577,33 @@ ashby:
     - { name: "linear", label: "Linear" }
 
 adzuna:
-  enabled: false  # Enable in Tier 2 rollout
-  app_id: ""
-  app_key: ""
-  country: "ca"
+  enabled: false  # Requires ADZUNA_APP_ID and ADZUNA_APP_KEY env vars
+  boards:
+    - { name: "Canada Software", country: "ca", keywords: "software engineer" }
 
 remotive:
-  enabled: false  # Enable in Tier 2 rollout
+  enabled: false  # Rate-limited: 2 req/min, keep board count low
+  boards:
+    - { name: "Software Dev", category: "software-dev" }
+
+coresignal:
+  enabled: false  # Requires CORESIGNAL_API_KEY. Credit-based: 400 search + 200 collect on free tier (14 days).
+  boards:
+    - { name: "Canada Software Engineers", country: "Canada", keywords: "software engineer", employmentType: "Full-time", maxCollect: 50 }
+
+brightdata:
+  enabled: false  # Requires BRIGHTDATA_API_TOKEN. Pay-as-you-go: ~$1.50/1K records.
+  boards:
+    - { name: "LinkedIn Backend Canada", category: "linkedin", keywords: "backend engineer", country: "Canada", maxCollect: 100 }
+    - { name: "Indeed Software Canada", category: "indeed", keywords: "software engineer", country: "Canada", maxCollect: 100 }
+    - { name: "Glassdoor Platform Canada", category: "glassdoor", keywords: "platform engineer", country: "Canada", maxCollect: 50 }
+
+# Role keyword filters (case-insensitive, applied to all providers)
+filters:
+  exclude_titles: [frontend, front-end, front end, ui engineer, ux engineer]
+  include_titles: [software, engineer, developer, swe, backend, back-end, fullstack, full-stack, full stack, platform]
+  location_keywords: [toronto, canada, remote]
+  remote_indicators: [remote, work from anywhere, distributed]
 ```
 
 ---
@@ -564,10 +631,21 @@ remotive:
 14. Seniority filtering on commands
 15. Export pagination tracking
 
-**Phase 4 — Expand Sources**:
+**Phase 4 — Expand Sources (Aggregators)**:
 16. Adzuna provider
 17. Remotive provider
-18. Additional providers as needed
+18. "Why this company?" generator (`/generate-response`)
+
+**Phase 5 — Coresignal Provider**:
+19. Coresignal Base Jobs API (search + collect, credit-aware)
+20. Board-level `maxCollect` caps to control credit spend
+
+**Phase 6 — Bright Data + Cross-Provider Dedup**:
+21. Bright Data provider (LinkedIn, Indeed, Glassdoor via async scraper API)
+22. Cross-provider soft dedup via `canonicalKey` (normalized company + title + description fingerprint)
+23. Priority-tiered ingestion (Coresignal → Bright Data → remaining providers)
+24. Duplicate scoring skip (saves LLM cost)
+25. Display/export filters to hide flagged duplicates
 
 ---
 
@@ -589,9 +667,13 @@ remotive:
    - Run ingestion against real Greenhouse/Ashby APIs
    - Verify jobs appear in DB with correct scores
    - Verify role and location filters exclude irrelevant jobs
-   - Test all Discord slash commands (topjobs, alljobs, job, tailor, generate-cover, apply, status, rescore, export)
+   - Test all Discord slash commands (topjobs, alljobs, job, tailor, generate-cover, generate-response, apply, status, rescore, export)
    - Generate a tailored resume → verify HTML output + Google Drive upload + link in Applications sheet
    - Export to Google Sheets → verify Jobs tab row format
    - Use `/apply` and `/status` → verify Applications tab updates
    - Verify stale job expiry after 30 days
+   - Verify priority-tiered execution (Coresignal logs before Bright Data, before Greenhouse/Ashby)
+   - Verify cross-provider dedup: look for "Likely duplicate found — flagged" log messages
+   - Verify duplicates hidden from `/topjobs`, `/alljobs`, `/export` (only primaries shown)
+   - Verify DB state: `SELECT COUNT(*) FROM jobs WHERE likely_duplicate_of_id IS NOT NULL` shows flagged duplicates
 4. **Docker**: `docker compose up` should bring up the entire stack
