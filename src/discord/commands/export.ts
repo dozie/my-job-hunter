@@ -1,7 +1,8 @@
 import { SlashCommandBuilder, type ChatInputCommandInteraction } from 'discord.js';
-import { eq, and, desc, sql, isNull } from 'drizzle-orm';
+import { eq, sql } from 'drizzle-orm';
 import { db } from '../../db/client.js';
 import { jobs } from '../../db/schema.js';
+import { queryJobsInterleaved } from '../../db/queries.js';
 import { isGoogleConfigured, appendJobsToSheet } from '../../export/sheets.js';
 import { isEmailConfigured, sendJobSummaryEmail } from '../../export/email.js';
 import { logger } from '../../observability/logger.js';
@@ -52,22 +53,10 @@ export const exportCommand: BotCommand = {
         .from(jobs);
       const currentMaxCursor = cursorResult.maxCursor;
 
-      // Query unexported jobs
-      let jobRows = await db
-        .select()
-        .from(jobs)
-        .where(
-          and(
-            eq(jobs.exportStatus, 'pending'),
-            eq(jobs.isStale, false),
-            isNull(jobs.likelyDuplicateOfId),
-          ),
-        )
-        .orderBy(desc(jobs.score));
+      // Query unexported jobs with company-interleaved ordering
+      let jobRows = await queryJobsInterleaved({ unexportedOnly: true });
 
-      if (mode === 'top') {
-        jobRows = jobRows.slice(0, count);
-      } else if (mode === 'next') {
+      if (mode === 'top' || mode === 'next') {
         jobRows = jobRows.slice(0, count);
       }
       // 'all' keeps the full list

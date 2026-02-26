@@ -1,7 +1,5 @@
 import { SlashCommandBuilder, type ChatInputCommandInteraction } from 'discord.js';
-import { desc, eq, and, isNull } from 'drizzle-orm';
-import { db } from '../../db/client.js';
-import { jobs } from '../../db/schema.js';
+import { queryJobsInterleaved } from '../../db/queries.js';
 import { buildJobEmbed } from '../embeds.js';
 import { sendPaginatedEmbeds } from '../pagination.js';
 import type { BotCommand } from '../bot.js';
@@ -18,13 +16,7 @@ export const topCommand: BotCommand = {
     await interaction.deferReply();
 
     const limit = interaction.options.getInteger('limit') ?? 10;
-
-    const topJobs = await db
-      .select()
-      .from(jobs)
-      .where(and(eq(jobs.isStale, false), isNull(jobs.likelyDuplicateOfId)))
-      .orderBy(desc(jobs.score))
-      .limit(limit);
+    const topJobs = await queryJobsInterleaved({ limit });
 
     const embeds = topJobs.map((job, i) => buildJobEmbed(job, i));
     await sendPaginatedEmbeds(interaction, embeds, `Top ${limit} Jobs`);

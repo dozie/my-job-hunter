@@ -1,7 +1,5 @@
 import { SlashCommandBuilder, type ChatInputCommandInteraction } from 'discord.js';
-import { desc, eq, and, isNull } from 'drizzle-orm';
-import { db } from '../../db/client.js';
-import { jobs } from '../../db/schema.js';
+import { queryJobsInterleaved } from '../../db/queries.js';
 import { buildJobEmbed } from '../embeds.js';
 import { sendPaginatedEmbeds } from '../pagination.js';
 import type { BotCommand } from '../bot.js';
@@ -30,19 +28,9 @@ export const allCommand: BotCommand = {
     await interaction.deferReply();
 
     const limit = interaction.options.getInteger('limit') ?? 25;
-    const seniority = interaction.options.getString('seniority');
+    const seniority = interaction.options.getString('seniority') ?? undefined;
 
-    const conditions = [eq(jobs.isStale, false), isNull(jobs.likelyDuplicateOfId)];
-    if (seniority) {
-      conditions.push(eq(jobs.seniority, seniority));
-    }
-
-    const allJobs = await db
-      .select()
-      .from(jobs)
-      .where(and(...conditions))
-      .orderBy(desc(jobs.score))
-      .limit(limit);
+    const allJobs = await queryJobsInterleaved({ limit, seniority });
 
     const title = seniority
       ? `All Jobs (${seniority}) — limit ${limit}`
