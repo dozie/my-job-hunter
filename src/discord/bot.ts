@@ -69,11 +69,15 @@ export async function createBot(): Promise<Client> {
       await command.execute(interaction);
     } catch (err) {
       log.error({ err, command: interaction.commandName }, 'Command execution failed');
-      const reply = { content: 'An error occurred while executing this command.', ephemeral: true };
-      if (interaction.replied || interaction.deferred) {
-        await interaction.followUp(reply);
-      } else {
-        await interaction.reply(reply);
+      try {
+        const reply = { content: 'An error occurred while executing this command.', flags: 64 };
+        if (interaction.replied || interaction.deferred) {
+          await interaction.followUp(reply);
+        } else {
+          await interaction.reply(reply);
+        }
+      } catch {
+        // Interaction token expired — nothing we can do
       }
     }
   });

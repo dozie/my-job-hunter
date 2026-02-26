@@ -5,13 +5,19 @@ import { jobs } from '../../db/schema.js';
 import { loadScoringConfig } from '../../config/scoring.js';
 import { scoreJob } from '../../scoring/scorer.js';
 import { shouldGenerateSummary, generateSummary } from '../../scoring/summarizer.js';
-import type { JobMetadata } from '../../scoring/analyzer.js';
+import { analyzeJob, inferSeniorityFromTitle, type JobMetadata } from '../../scoring/analyzer.js';
+import { logger } from '../../observability/logger.js';
 import type { BotCommand } from '../bot.js';
+
+const log = logger.child({ module: 'discord:rescore' });
 
 export const rescoreCommand: BotCommand = {
   data: new SlashCommandBuilder()
     .setName('rescore')
     .setDescription('Re-apply scoring weights from config to all jobs')
+    .addBooleanOption(opt =>
+      opt.setName('with-analysis').setDescription('Re-run AI analysis on all jobs (fixes seniority/remote detection)'),
+    )
     .addBooleanOption(opt =>
       opt.setName('with-summaries').setDescription('Also regenerate AI summaries for high-scoring jobs (costs money)'),
     ) as SlashCommandBuilder,
@@ -19,6 +25,7 @@ export const rescoreCommand: BotCommand = {
   async execute(interaction: ChatInputCommandInteraction) {
     await interaction.deferReply();
 
+    const withAnalysis = interaction.options.getBoolean('with-analysis') ?? false;
     const withSummaries = interaction.options.getBoolean('with-summaries') ?? false;
 
     // Reload scoring config (bypass cache to pick up YAML changes)
@@ -30,23 +37,39 @@ export const rescoreCommand: BotCommand = {
       .where(eq(jobs.isStale, false));
 
     let rescored = 0;
+    let reanalyzed = 0;
     let summariesGenerated = 0;
 
     for (const job of allJobs) {
-      // Build metadata from existing DB fields
-      const metadata: JobMetadata = {
-        seniority: (job.seniority as JobMetadata['seniority']) || 'unknown',
-        remote_eligible: job.remoteEligible ?? false,
-        interview_style: (job.interviewStyle as JobMetadata['interview_style']) || 'unknown',
-        role_type: 'software_engineer', // Default — role_type isn't stored separately
-      };
+      let metadata: JobMetadata;
 
-      // Infer role_type from score breakdown if available
-      if (job.scoreBreakdown) {
-        const breakdown = job.scoreBreakdown as Record<string, number>;
-        if (breakdown.role_type !== undefined) {
-          // The breakdown stores the weighted value, not the factor
-          // We can't perfectly reverse it, so keep the default
+      if (withAnalysis && job.description) {
+        // Re-run AI analysis with improved prompt + location
+        try {
+          metadata = await analyzeJob(job.title, job.description, job.location ?? undefined);
+          reanalyzed++;
+        } catch (err) {
+          log.warn({ err, jobId: job.id }, 'Re-analysis failed, falling back to DB metadata');
+          metadata = {
+            seniority: (job.seniority as JobMetadata['seniority']) || 'unknown',
+            remote_eligible: job.remoteEligible ?? false,
+            interview_style: (job.interviewStyle as JobMetadata['interview_style']) || 'unknown',
+            role_type: 'software_engineer',
+          };
+        }
+      } else {
+        // Build metadata from existing DB fields
+        metadata = {
+          seniority: (job.seniority as JobMetadata['seniority']) || 'unknown',
+          remote_eligible: job.remoteEligible ?? false,
+          interview_style: (job.interviewStyle as JobMetadata['interview_style']) || 'unknown',
+          role_type: 'software_engineer',
+        };
+
+        // Apply title-based seniority override even without full re-analysis
+        const titleSeniority = inferSeniorityFromTitle(job.title);
+        if (metadata.seniority === 'unknown' && titleSeniority) {
+          metadata.seniority = titleSeniority;
         }
       }
 
@@ -55,6 +78,9 @@ export const rescoreCommand: BotCommand = {
       const updateData: Record<string, unknown> = {
         score: String(result.score),
         scoreBreakdown: result.breakdown,
+        seniority: metadata.seniority,
+        remoteEligible: metadata.remote_eligible,
+        interviewStyle: metadata.interview_style,
       };
 
       // Optionally regenerate summaries
@@ -71,6 +97,9 @@ export const rescoreCommand: BotCommand = {
     }
 
     let message = `Re-scored ${rescored} jobs with current scoring config.`;
+    if (withAnalysis) {
+      message += ` Re-analyzed ${reanalyzed} jobs.`;
+    }
     if (withSummaries) {
       message += ` Regenerated ${summariesGenerated} summaries.`;
     }

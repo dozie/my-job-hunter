@@ -220,7 +220,7 @@ async function scoreNewJobs(newJobs: NewJob[]): Promise<number> {
           return;
         }
 
-        const metadata = await analyzeJob(job.title, job.description);
+        const metadata = await analyzeJob(job.title, job.description, job.location ?? undefined);
         const result = scoreJob(metadata, job.location ?? undefined);
 
         // Generate Sonnet summary only for high-scoring jobs (cost optimization)

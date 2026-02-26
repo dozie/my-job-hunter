@@ -15,6 +15,15 @@ const extractionSchema = z.object({
 
 export type JobMetadata = z.infer<typeof extractionSchema> & { fromDefaults?: boolean };
 
+export function inferSeniorityFromTitle(title: string): JobMetadata['seniority'] | null {
+  const lower = title.toLowerCase();
+  if (/\b(staff|principal)\b/.test(lower)) return 'staff';
+  if (/\b(lead|engineering manager|em)\b/.test(lower)) return 'lead';
+  if (/\b(senior|sr\.?)\b/.test(lower)) return 'senior';
+  if (/\b(junior|jr\.?|new grad|entry[- ]level|intern)\b/.test(lower)) return 'junior';
+  return null;
+}
+
 const DEFAULTS: JobMetadata = {
   seniority: 'unknown',
   remote_eligible: false,
@@ -55,10 +64,15 @@ const extractionTool: Anthropic.Tool = {
 export async function analyzeJob(
   title: string,
   description: string,
+  location?: string,
 ): Promise<JobMetadata> {
   try {
+    const titleSeniority = inferSeniorityFromTitle(title);
+
     // Truncate description to control cost
     const truncated = description.slice(0, 4000);
+
+    const locationLine = location ? `\nLocation: ${location}` : '';
 
     const response = await anthropic.messages.create({
       model: 'claude-haiku-4-5-20251001',
@@ -68,7 +82,20 @@ export async function analyzeJob(
       messages: [
         {
           role: 'user',
-          content: `Analyze this job posting and extract metadata.\n\nTitle: ${title}\n\nDescription:\n${truncated}`,
+          content: `Analyze this job posting and extract metadata.
+
+IMPORTANT rules:
+- If the title contains "Staff" or "Principal", seniority MUST be "staff"
+- If the title contains "Senior" or "Sr", seniority MUST be "senior"
+- If the title contains "Lead" or "Engineering Manager", seniority MUST be "lead"
+- If the title contains "Junior", "Jr", "New Grad", or "Entry Level", seniority MUST be "junior"
+- If none of the above, infer from the description (years of experience, responsibilities)
+- For remote_eligible: check BOTH the location field AND the description for remote signals
+
+Title: ${title}${locationLine}
+
+Description:
+${truncated}`,
         },
       ],
     });
@@ -79,12 +106,24 @@ export async function analyzeJob(
 
     if (!toolBlock) {
       log.warn({ title }, 'No tool use in Claude response, using defaults');
-      return { ...DEFAULTS, fromDefaults: true };
+      const defaults = { ...DEFAULTS, fromDefaults: true };
+      if (titleSeniority) defaults.seniority = titleSeniority;
+      return defaults;
     }
 
-    return extractionSchema.parse(toolBlock.input);
+    const parsed = extractionSchema.parse(toolBlock.input);
+
+    // Override with deterministic title-based seniority if AI returned unknown
+    if (parsed.seniority === 'unknown' && titleSeniority) {
+      parsed.seniority = titleSeniority;
+    }
+
+    return parsed;
   } catch (err) {
     log.error({ err, title }, 'Job analysis failed, using defaults');
-    return { ...DEFAULTS, fromDefaults: true };
+    const defaults = { ...DEFAULTS, fromDefaults: true };
+    const titleSeniority = inferSeniorityFromTitle(title);
+    if (titleSeniority) defaults.seniority = titleSeniority;
+    return defaults;
   }
 }
