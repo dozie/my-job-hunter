@@ -6,9 +6,9 @@ import { buildJobEmbed } from '../embeds.js';
 import { sendPaginatedEmbeds } from '../pagination.js';
 import type { BotCommand } from '../bot.js';
 
-export const alljobsCommand: BotCommand = {
+export const allCommand: BotCommand = {
   data: new SlashCommandBuilder()
-    .setName('alljobs')
+    .setName('all')
     .setDescription('Show all jobs with optional filters')
     .addIntegerOption(opt =>
       opt.setName('limit').setDescription('Max jobs to show (default 25)').setMinValue(1).setMaxValue(100),

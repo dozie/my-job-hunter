@@ -9,8 +9,8 @@ import {
 } from 'discord.js';
 import { env } from '../config/env.js';
 import { logger } from '../observability/logger.js';
-import { topjobsCommand } from './commands/topjobs.js';
-import { alljobsCommand } from './commands/alljobs.js';
+import { topCommand } from './commands/topjobs.js';
+import { allCommand } from './commands/alljobs.js';
 import { tailorCommand } from './commands/tailor.js';
 import { generateCoverCommand } from './commands/generate-cover.js';
 import { generateResponseCommand } from './commands/generate-response.js';
@@ -28,8 +28,8 @@ export interface BotCommand {
 }
 
 const commands: BotCommand[] = [
-  topjobsCommand,
-  alljobsCommand,
+  topCommand,
+  allCommand,
   tailorCommand,
   generateCoverCommand,
   generateResponseCommand,

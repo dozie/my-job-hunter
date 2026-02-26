@@ -6,9 +6,9 @@ import { buildJobEmbed } from '../embeds.js';
 import { sendPaginatedEmbeds } from '../pagination.js';
 import type { BotCommand } from '../bot.js';
 
-export const topjobsCommand: BotCommand = {
+export const topCommand: BotCommand = {
   data: new SlashCommandBuilder()
-    .setName('topjobs')
+    .setName('top')
     .setDescription('Show top-scored jobs')
     .addIntegerOption(opt =>
       opt.setName('limit').setDescription('Number of jobs to show (default 10)').setMinValue(1).setMaxValue(50),
