@@ -46,12 +46,13 @@ export function buildCanonicalKey(company: string, title: string, description?: 
 }
 
 /** Detect remote eligibility from location/description text */
-function detectRemote(location?: string, description?: string): boolean {
+function detectRemote(location?: string, description?: string, remoteIndicators?: string[]): boolean {
+  if (!remoteIndicators || remoteIndicators.length === 0) return false;
   const text = `${location || ''} ${description || ''}`.toLowerCase();
-  return text.includes('remote') || text.includes('work from anywhere') || text.includes('distributed');
+  return remoteIndicators.some(ind => text.includes(ind.toLowerCase()));
 }
 
-export function normalizeJobs(rawJobs: RawJob[], providerName: string): NewJob[] {
+export function normalizeJobs(rawJobs: RawJob[], providerName: string, remoteIndicators?: string[]): NewJob[] {
   return rawJobs.map((raw) => {
     const strippedDescription = raw.description ? stripHtml(raw.description) : undefined;
     return {
@@ -62,7 +63,7 @@ export function normalizeJobs(rawJobs: RawJob[], providerName: string): NewJob[]
       link: raw.link,
       description: strippedDescription,
       location: raw.location,
-      remoteEligible: raw.remoteEligible ?? detectRemote(raw.location, raw.description),
+      remoteEligible: raw.remoteEligible ?? detectRemote(raw.location, raw.description, remoteIndicators),
       compensation: raw.compensation,
       canonicalKey: buildCanonicalKey(raw.company, raw.title, strippedDescription),
     };

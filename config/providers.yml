@@ -67,4 +67,14 @@ filters:
   remote_indicators:
     - remote
     - work from anywhere
-    - distributed
+    - work from home
+    - fully remote
+    - remote-friendly
+  onsite_indicators:
+    - "#li-onsite"
+    - "#li-hybrid"
+    - in-person
+    - in-office
+    - on-site
+    - onsite
+    - hybrid

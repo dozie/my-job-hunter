@@ -13,7 +13,7 @@ const extractionSchema = z.object({
   role_type: z.enum(['backend', 'platform', 'software_engineer', 'fullstack', 'other']),
 });
 
-export type JobMetadata = z.infer<typeof extractionSchema>;
+export type JobMetadata = z.infer<typeof extractionSchema> & { fromDefaults?: boolean };
 
 const DEFAULTS: JobMetadata = {
   seniority: 'unknown',
@@ -79,12 +79,12 @@ export async function analyzeJob(
 
     if (!toolBlock) {
       log.warn({ title }, 'No tool use in Claude response, using defaults');
-      return DEFAULTS;
+      return { ...DEFAULTS, fromDefaults: true };
     }
 
     return extractionSchema.parse(toolBlock.input);
   } catch (err) {
     log.error({ err, title }, 'Job analysis failed, using defaults');
-    return DEFAULTS;
+    return { ...DEFAULTS, fromDefaults: true };
   }
 }

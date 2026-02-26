@@ -25,22 +25,30 @@ export function passesLocationFilter(job: RawJob, filters: FiltersConfig): boole
   const location = (job.location || '').toLowerCase();
   const description = (job.description || '').toLowerCase();
 
-  // Check location field
-  for (const keyword of filters.location_keywords) {
-    if (location.includes(keyword.toLowerCase())) {
-      return true;
-    }
+  // 1. Toronto — always pass (user is local, any work arrangement OK)
+  if (location.includes('toronto')) {
+    return true;
   }
 
-  // Check description for remote indicators
+  // 2. Check for remote signal in location or description
+  let hasRemoteSignal = false;
   for (const indicator of filters.remote_indicators) {
-    if (description.includes(indicator.toLowerCase())) {
-      return true;
-    }
-    if (location.includes(indicator.toLowerCase())) {
-      return true;
+    const ind = indicator.toLowerCase();
+    if (location.includes(ind) || description.includes(ind)) {
+      hasRemoteSignal = true;
+      break;
     }
   }
 
-  return false;
+  if (!hasRemoteSignal) return false;
+
+  // 3. Reject if onsite/hybrid indicators present — not genuinely remote
+  for (const indicator of filters.onsite_indicators) {
+    const ind = indicator.toLowerCase();
+    if (location.includes(ind) || description.includes(ind)) {
+      return false;
+    }
+  }
+
+  return true;
 }

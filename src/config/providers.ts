@@ -21,6 +21,7 @@ const filtersSchema = z.object({
   include_titles: z.array(z.string()),
   location_keywords: z.array(z.string()),
   remote_indicators: z.array(z.string()),
+  onsite_indicators: z.array(z.string()),
 });
 
 const providersConfigSchema = z.object({

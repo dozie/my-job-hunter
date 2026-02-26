@@ -175,6 +175,19 @@ async function insertNewJobs(normalized: NewJob[]): Promise<InsertResult> {
         }
 
         inserted.push(job);
+      } else {
+        // Re-encountered job — refresh fields and updatedAt for stale tracking
+        await db.update(jobs)
+          .set({
+            updatedAt: new Date(),
+            description: job.description,
+            compensation: job.compensation,
+            location: job.location,
+          })
+          .where(and(
+            eq(jobs.externalId, job.externalId!),
+            eq(jobs.provider, job.provider),
+          ));
       }
     } catch (err) {
       log.error({ err, externalId: job.externalId }, 'Failed to insert job');
@@ -223,8 +236,8 @@ async function scoreNewJobs(newJobs: NewJob[]): Promise<number> {
             interviewStyle: metadata.interview_style,
             score: String(result.score),
             scoreBreakdown: result.breakdown,
-            remoteEligible: metadata.remote_eligible,
             summary,
+            ...(metadata.fromDefaults ? {} : { remoteEligible: metadata.remote_eligible }),
           })
           .where(
             and(
@@ -255,7 +268,7 @@ async function markStaleJobs(): Promise<number> {
   const result = await db
     .update(jobs)
     .set({ isStale: true })
-    .where(and(eq(jobs.isStale, false), lt(jobs.createdAt, cutoff)))
+    .where(and(eq(jobs.isStale, false), lt(jobs.updatedAt, cutoff)))
     .returning({ id: jobs.id });
 
   return result.length;
@@ -312,7 +325,7 @@ async function runProviderIngestion(provider: JobProvider): Promise<IngestionRes
     );
 
     // 4. Normalize
-    const normalized = normalizeJobs(locationFiltered, provider.name);
+    const normalized = normalizeJobs(locationFiltered, provider.name, config.filters.remote_indicators);
 
     // 5. Insert (deduplicate via ON CONFLICT) + cross-provider soft dedup
     const { inserted, duplicatesFound } = await insertNewJobs(normalized);
