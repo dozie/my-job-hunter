@@ -6,17 +6,23 @@ export interface ScoreResult {
   breakdown: Record<string, number>;
 }
 
-const NORTH_AMERICA_KEYWORDS = [
+const CANADA_KEYWORDS = [
   'toronto', 'canada', 'canadian', 'vancouver', 'montreal', 'ottawa',
+];
+
+const US_KEYWORDS = [
   'us', 'usa', 'united states', 'new york', 'san francisco',
-  'seattle', 'austin', 'boston', 'chicago', 'denver', 'remote',
+  'seattle', 'austin', 'boston', 'chicago', 'denver',
 ];
 
 function getEmployerLocationFactor(location?: string): number {
   if (!location) return 0.5;
   const lower = location.toLowerCase();
-  for (const kw of NORTH_AMERICA_KEYWORDS) {
+  for (const kw of CANADA_KEYWORDS) {
     if (lower.includes(kw)) return 1.0;
+  }
+  for (const kw of US_KEYWORDS) {
+    if (lower.includes(kw)) return 0.5;
   }
   return 0.0;
 }

@@ -99,6 +99,26 @@ describe('scoreJob', () => {
     expect(breakdown.employer_location).toBe(1.5);
   });
 
+  it('Canada Remote gets employer factor 1.0', () => {
+    const { breakdown } = scoreJob(makeMeta(), 'Canada Remote');
+    expect(breakdown.employer_location).toBe(1.5);
+  });
+
+  it('US location gets employer factor 0.5', () => {
+    const { breakdown } = scoreJob(makeMeta(), 'San Francisco, CA');
+    expect(breakdown.employer_location).toBe(0.75);
+  });
+
+  it('US Remote still gets US factor 0.5 (remote handled by remote_eligible)', () => {
+    const { breakdown } = scoreJob(makeMeta(), 'San Francisco, CA (Remote)');
+    expect(breakdown.employer_location).toBe(0.75);
+  });
+
+  it('"Remote" alone gets 0.0 factor (no geography signal)', () => {
+    const { breakdown } = scoreJob(makeMeta(), 'Remote');
+    expect(breakdown.employer_location).toBe(0.0);
+  });
+
   it('undefined location gets 0.5 factor', () => {
     const { breakdown } = scoreJob(makeMeta(), undefined);
     expect(breakdown.employer_location).toBe(0.75);
