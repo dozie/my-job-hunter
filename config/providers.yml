@@ -35,7 +35,7 @@ brightdata:
     - { name: "Glassdoor Platform Canada", category: "glassdoor", keywords: "platform engineer", country: "Canada", maxCollect: 50 }
 
 serpapi:
-  enabled: false  # Requires SERPAPI_API_KEY. Free: 250 searches/mo. Only remote jobs returned.
+  enabled: true  # Requires SERPAPI_API_KEY. Free: 250 searches/mo. Only remote jobs returned.
   # label = SerpApi "location" param (not company label)
   boards:
     - { name: "Software Engineer Canada", keywords: "software engineer", label: "Canada", maxCollect: 10 }

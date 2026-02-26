@@ -4,7 +4,7 @@ A personal job-hunting automation system that retrieves software engineering job
 
 ## Features
 
-- **Multi-source ingestion** — Fetches jobs from Greenhouse, Ashby, Adzuna, Remotive, Coresignal, and Bright Data (LinkedIn, Indeed, Glassdoor) APIs
+- **Multi-source ingestion** — Fetches jobs from Greenhouse, Ashby, Adzuna, Remotive, Coresignal, Bright Data (LinkedIn, Indeed, Glassdoor), and SerpApi (Google Jobs) APIs
 - **Smart filtering** — Two-pass title filter (exclude frontend, include SE keywords) + location/remote filter
 - **AI-powered scoring** — Claude Haiku extracts metadata; Sonnet generates match summaries (score threshold-gated); weighted scoring ranks jobs 0–10
 - **Resume tailoring** — Claude Opus rewrites your resume bullets to match each JD, outputs styled HTML
@@ -13,10 +13,10 @@ A personal job-hunting automation system that retrieves software engineering job
 - **Google Drive resume storage** — Auto-upload tailored resumes to Drive with shareable links
 - **Application tracking** — Track application status (applied → interviewing → offer/rejected) in DB + Sheets
 - **Email summaries** — Send HTML email digest of exported jobs via SMTP
-- **Discord bot** — 10 slash commands with paginated embeds
+- **Discord bot** — 11 slash commands with paginated embeds
 - **Scheduled runs** — Ingests every 4 hours (06:00–18:00 ET) via node-cron
 - **Deduplication** — Per-provider unique constraint on `(external_id, provider)` + cross-provider soft dedup via canonical key (normalized company + title + description fingerprint). Duplicates are flagged, not deleted, and hidden from display/export
-- **Priority-tiered ingestion** — Providers run in priority order (Coresignal → Bright Data → Greenhouse/Ashby/Adzuna/Remotive) so higher-quality sources establish primacy for dedup
+- **Priority-tiered ingestion** — Providers run in priority order (Coresignal → Bright Data → Greenhouse/Ashby/Adzuna/Remotive → SerpApi) so higher-quality sources establish primacy for dedup
 - **Stale job expiry** — Jobs older than 30 days are auto-marked stale
 
 ## Tech Stack
@@ -59,7 +59,8 @@ src/
 │       ├── adzuna.ts           # Adzuna job aggregator API
 │       ├── remotive.ts         # Remotive remote jobs API
 │       ├── coresignal.ts       # Coresignal Base Jobs API (search + collect)
-│       └── brightdata.ts       # Bright Data Jobs Scraper (LinkedIn, Indeed, Glassdoor)
+│       ├── brightdata.ts       # Bright Data Jobs Scraper (LinkedIn, Indeed, Glassdoor)
+│       └── serpapi.ts          # SerpApi Google Jobs aggregator
 ├── scoring/
 │   ├── analyzer.ts             # Claude Haiku metadata extraction
 │   ├── summarizer.ts           # Claude Sonnet match summaries
@@ -89,7 +90,8 @@ src/
 │       ├── rescore.ts          # /rescore
 │       ├── export.ts           # /export [mode] [count] [email]
 │       ├── apply.ts            # /apply [jobId] [notes]
-│       └── status.ts           # /status [jobId] [status] [notes]
+│       ├── status.ts           # /status [jobId] [status] [notes]
+│       └── stats.ts            # /stats
 └── observability/
     └── logger.ts               # pino structured logging
 ```
@@ -107,6 +109,7 @@ src/
 - (Optional) Adzuna API credentials for Adzuna provider
 - (Optional) Coresignal API key for Coresignal provider
 - (Optional) Bright Data API token for Bright Data provider (LinkedIn, Indeed, Glassdoor)
+- (Optional) SerpApi API key for Google Jobs aggregation
 
 ### 1. Clone and install
 
@@ -161,6 +164,12 @@ brightdata:
     - { name: "LinkedIn Backend Canada", category: "linkedin", keywords: "backend engineer", country: "Canada", maxCollect: 100 }
     - { name: "Indeed Software Canada", category: "indeed", keywords: "software engineer", country: "Canada", maxCollect: 100 }
     - { name: "Glassdoor Platform Canada", category: "glassdoor", keywords: "platform engineer", country: "Canada", maxCollect: 50 }
+
+serpapi:
+  enabled: false  # Requires SERPAPI_API_KEY, free: 250 searches/mo
+  boards:
+    - { name: "Software Engineer Canada", keywords: "software engineer", label: "Canada", maxCollect: 10 }
+    - { name: "Senior Software Engineer Canada", keywords: "senior software engineer", label: "Canada", maxCollect: 10 }
 ```
 
 ### 4. Configure scoring
@@ -199,8 +208,8 @@ Jobs are scored 0–10 using a weighted formula:
 
 | Command | Options | Description |
 |---------|---------|-------------|
-| `/topjobs` | `limit` (default 10) | Show top-scored jobs, sorted by score |
-| `/alljobs` | `limit` (default 25), `seniority` | All jobs with optional seniority filter |
+| `/top` | `limit` (default 10) | Show top-scored jobs, sorted by score |
+| `/all` | `limit` (default 25), `seniority` | All jobs with optional seniority filter |
 | `/job` | `jobid` (required) | View full job details: score breakdown, compensation, description |
 
 ### AI Generation
@@ -216,7 +225,7 @@ Jobs are scored 0–10 using a weighted formula:
 | Command | Options | Description |
 |---------|---------|-------------|
 | `/export` | `mode` (top/next/all), `count` (default 25), `email` (optional) | Export unexported jobs to Google Sheets. `top` = highest scoring, `next` = next batch by cursor, `all` = everything. Optionally sends email summary. |
-| `/apply` | `jobid` (required), `notes` (optional) | Mark a job as applied. Creates application record in DB and syncs to Google Sheets "Applications" tab with resume Drive link (if available). |
+| `/apply` | `jobid` (required), `notes` (optional) | Mark a job as applied. Auto-tailors a resume if none cached (~$0.40 via Opus). Creates application record in DB and syncs to Google Sheets "Applications" tab with resume Drive link. |
 | `/status` | `jobid` (required), `status` (applied/interviewing/rejected/offer), `notes` (optional) | Update application status in DB + Google Sheets. |
 
 ### System
@@ -224,12 +233,13 @@ Jobs are scored 0–10 using a weighted formula:
 | Command | Options | Description |
 |---------|---------|-------------|
 | `/rescore` | `with-summaries` (optional) | Re-apply scoring weights from `config/scoring.yml` to all jobs. Free unless `with-summaries` is set (regenerates Sonnet summaries). |
+| `/stats` | — | Show job counts by provider with active/stale breakdown. |
 
 ## Cost Optimization
 
 - **Score threshold**: Sonnet summaries only generated for jobs scoring >= 5.0/10
 - **Caching**: Resume, cover letter, and "why us" results are cached in DB — calling the same command twice returns the cached version at zero cost
-- **On-demand only**: Opus calls (`/tailor`, `/generate-cover`, `/generate-response`) only fire when you explicitly request them
+- **On-demand only**: Opus calls (`/tailor`, `/generate-cover`, `/generate-response`) only fire when you explicitly request them. `/apply` auto-tailors if no cached resume exists.
 - **Coresignal credit cap**: Each board has a configurable `maxCollect` limit (default 50) to prevent runaway collect credit usage
 - **Bright Data record cap**: Each board has a configurable `maxCollect` limit (default 100) mapped to `limit_per_input` (~$1.50/1K records)
 - **Duplicate scoring skip**: Cross-provider duplicates are not sent to the AI scorer, saving LLM cost
@@ -343,6 +353,38 @@ Required if you enable the `brightdata` provider in `config/providers.yml`. Scra
 | `country` | No | Country filter |
 | `employmentType` | No | LinkedIn/Indeed job type filter |
 | `maxCollect` | No | Max records per board (default: 100) |
+
+## SerpApi Setup (Optional)
+
+Required if you enable the `serpapi` provider in `config/providers.yml`. Aggregates jobs from Google Jobs.
+
+1. Sign up at [serpapi.com](https://serpapi.com/) — free tier includes 250 searches/month
+2. From the dashboard, copy your **API Key**
+3. Set in `.env`:
+   ```
+   SERPAPI_API_KEY=your_api_key
+   ```
+4. Enable in `config/providers.yml`: set `serpapi.enabled: true`
+5. Configure boards with search keywords and location:
+   ```yaml
+   serpapi:
+     enabled: true
+     boards:
+       - { name: "Software Engineer Canada", keywords: "software engineer", label: "Canada", maxCollect: 10 }
+   ```
+
+**Cost per ingestion run:**
+- Each board page = 1 search credit (10 results/page, fixed)
+- `maxCollect: 10` = 1 credit, `maxCollect: 20` = 2 credits
+- Free tier: 250 searches/month, 50/hour rate limit
+- Cached/repeated identical queries don't count toward quota
+
+| Board Config | Required | Description |
+|-------------|----------|-------------|
+| `name` | Yes | Display name for logging |
+| `keywords` | Yes | Job search keywords |
+| `label` | No | SerpApi `location` parameter (e.g. "Canada", "United States") |
+| `maxCollect` | No | Max results to collect per board (default: 10) |
 
 ## Email Setup (Optional)
 

@@ -19,6 +19,7 @@ import { rescoreCommand } from './commands/rescore.js';
 import { exportCommand } from './commands/export.js';
 import { applyCommand } from './commands/apply.js';
 import { statusCommand } from './commands/status.js';
+import { statsCommand } from './commands/stats.js';
 
 const log = logger.child({ module: 'discord:bot' });
 
@@ -38,6 +39,7 @@ const commands: BotCommand[] = [
   exportCommand,
   applyCommand,
   statusCommand,
+  statsCommand,
 ];
 const commandMap = new Collection<string, BotCommand>();
 

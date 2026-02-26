@@ -1,8 +1,9 @@
 import { SlashCommandBuilder, EmbedBuilder, type ChatInputCommandInteraction } from 'discord.js';
 import { eq } from 'drizzle-orm';
 import { db } from '../../db/client.js';
-import { jobs, applications, resumes } from '../../db/schema.js';
+import { jobs, applications } from '../../db/schema.js';
 import { isGoogleConfigured, appendApplicationRow } from '../../export/sheets.js';
+import { buildResume } from '../../resume/builder.js';
 import { logger } from '../../observability/logger.js';
 import type { BotCommand } from '../bot.js';
 
@@ -51,13 +52,17 @@ export const applyCommand: BotCommand = {
         })
         .returning();
 
-      // Check for existing resume + driveLink
-      const [resume] = await db
-        .select()
-        .from(resumes)
-        .where(eq(resumes.jobId, jobId))
-        .limit(1);
-      const driveLink = resume?.driveLink ?? null;
+      // Auto-tailor resume if none cached
+      let driveLink: string | null = null;
+      try {
+        const resumeResult = await buildResume(jobId);
+        driveLink = resumeResult.driveLink;
+        if (!resumeResult.cached) {
+          log.info({ jobId }, 'Auto-tailored resume for application');
+        }
+      } catch (err) {
+        log.warn({ err, jobId }, 'Resume tailoring failed — proceeding without resume');
+      }
 
       // Sync to Google Sheets if configured
       if (isGoogleConfigured()) {
@@ -79,6 +84,8 @@ export const applyCommand: BotCommand = {
 
       if (driveLink) {
         embed.addFields({ name: 'Resume', value: `[View on Drive](${driveLink})` });
+      } else {
+        embed.addFields({ name: 'Resume', value: 'Not available (tailoring failed or no description)' });
       }
       if (notes) {
         embed.addFields({ name: 'Notes', value: notes });
