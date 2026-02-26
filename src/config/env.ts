@@ -32,6 +32,9 @@ const envSchema = z.object({
 
   // Bright Data (optional — needed if brightdata provider is enabled in providers.yml)
   BRIGHTDATA_API_TOKEN: z.string().optional(),
+
+  // SerpApi (optional — needed if serpapi provider is enabled in providers.yml)
+  SERPAPI_API_KEY: z.string().optional(),
 });
 
 export type Env = z.infer<typeof envSchema>;

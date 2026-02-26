@@ -11,6 +11,7 @@ import { AdzunaProvider } from './providers/adzuna.js';
 import { RemotiveProvider } from './providers/remotive.js';
 import { CoresignalProvider } from './providers/coresignal.js';
 import { BrightDataProvider } from './providers/brightdata.js';
+import { SerpApiProvider } from './providers/serpapi.js';
 import { env } from '../config/env.js';
 import { passesRoleFilter, passesLocationFilter } from './filters.js';
 import { normalizeJobs, normalizeCompany, normalizeTitle } from './normalizer.js';
@@ -28,6 +29,7 @@ const PROVIDER_TIERS: string[][] = [
   ['coresignal'],
   ['brightdata'],
   ['greenhouse', 'ashby', 'adzuna', 'remotive'],
+  ['serpapi'],  // Tier 4: aggregator, runs last for best dedup
 ];
 
 export interface IngestionResult {
@@ -79,6 +81,13 @@ function buildProviders(): JobProvider[] {
       providers.push(new BrightDataProvider(config.brightdata.boards, env.BRIGHTDATA_API_TOKEN));
     } else {
       log.warn('Bright Data enabled but BRIGHTDATA_API_TOKEN not set — skipping');
+    }
+  }
+  if (config.serpapi.enabled && config.serpapi.boards.length > 0) {
+    if (env.SERPAPI_API_KEY) {
+      providers.push(new SerpApiProvider(config.serpapi.boards, env.SERPAPI_API_KEY));
+    } else {
+      log.warn('SerpApi enabled but SERPAPI_API_KEY not set — skipping');
     }
   }
 

@@ -48,6 +48,10 @@ const providersConfigSchema = z.object({
     enabled: z.boolean(),
     boards: z.array(boardSchema),
   }),
+  serpapi: z.object({
+    enabled: z.boolean(),
+    boards: z.array(boardSchema),
+  }),
   filters: filtersSchema,
 });
 
@@ -76,6 +80,7 @@ export function loadProvidersConfig(): ProvidersConfig {
         remotive: _config.remotive.boards.length,
         coresignal: _config.coresignal.boards.length,
         brightdata: _config.brightdata.boards.length,
+        serpapi: _config.serpapi.boards.length,
       },
       'Providers config loaded',
     );

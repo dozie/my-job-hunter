@@ -4,8 +4,8 @@ import { logger } from '../observability/logger.js';
 
 const log = logger.child({ module: 'scheduler' });
 
-// Every 4 hours between 06:00 and 18:00, America/Toronto
-const CRON_EXPRESSION = '0 */4 6-18 * * *';
+// Every 6 hours between 06:00 and 18:00, weekdays only, America/Toronto
+const CRON_EXPRESSION = '0 */6 6-18 * * 1-5';
 const TIMEZONE = 'America/Toronto';
 
 let isRunning = false;
