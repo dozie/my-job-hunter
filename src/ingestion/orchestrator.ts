@@ -1,4 +1,4 @@
-import { eq, and, lt, sql } from 'drizzle-orm';
+import { eq, ne, and, lt, isNull, sql } from 'drizzle-orm';
 import pLimit from 'p-limit';
 import { db } from '../db/client.js';
 import { jobs, ingestionLogs } from '../db/schema.js';
@@ -10,9 +10,10 @@ import { AshbyProvider } from './providers/ashby.js';
 import { AdzunaProvider } from './providers/adzuna.js';
 import { RemotiveProvider } from './providers/remotive.js';
 import { CoresignalProvider } from './providers/coresignal.js';
+import { BrightDataProvider } from './providers/brightdata.js';
 import { env } from '../config/env.js';
 import { passesRoleFilter, passesLocationFilter } from './filters.js';
-import { normalizeJobs } from './normalizer.js';
+import { normalizeJobs, normalizeCompany, normalizeTitle } from './normalizer.js';
 import { analyzeJob } from '../scoring/analyzer.js';
 import { scoreJob } from '../scoring/scorer.js';
 import { shouldGenerateSummary, generateSummary } from '../scoring/summarizer.js';
@@ -23,12 +24,19 @@ const log = logger.child({ module: 'orchestrator' });
 const SCORING_CONCURRENCY = 5;
 const STALE_DAYS = 30;
 
+const PROVIDER_TIERS: string[][] = [
+  ['coresignal'],
+  ['brightdata'],
+  ['greenhouse', 'ashby', 'adzuna', 'remotive'],
+];
+
 export interface IngestionResult {
   provider: string;
   fetched: number;
   afterRoleFilter: number;
   afterLocationFilter: number;
   inserted: number;
+  duplicates: number;
   scored: number;
   error?: string;
 }
@@ -66,14 +74,27 @@ function buildProviders(): JobProvider[] {
       log.warn('Coresignal enabled but CORESIGNAL_API_KEY not set — skipping');
     }
   }
+  if (config.brightdata.enabled && config.brightdata.boards.length > 0) {
+    if (env.BRIGHTDATA_API_TOKEN) {
+      providers.push(new BrightDataProvider(config.brightdata.boards, env.BRIGHTDATA_API_TOKEN));
+    } else {
+      log.warn('Bright Data enabled but BRIGHTDATA_API_TOKEN not set — skipping');
+    }
+  }
 
   return providers;
 }
 
-async function insertNewJobs(normalized: NewJob[]): Promise<NewJob[]> {
-  if (normalized.length === 0) return [];
+interface InsertResult {
+  inserted: NewJob[];
+  duplicatesFound: number;
+}
+
+async function insertNewJobs(normalized: NewJob[]): Promise<InsertResult> {
+  if (normalized.length === 0) return { inserted: [], duplicatesFound: 0 };
 
   const inserted: NewJob[] = [];
+  let duplicatesFound = 0;
 
   for (const job of normalized) {
     try {
@@ -84,6 +105,66 @@ async function insertNewJobs(normalized: NewJob[]): Promise<NewJob[]> {
         .returning();
 
       if (result.length > 0) {
+        if (job.canonicalKey) {
+          const existing = await db
+            .select({ id: jobs.id, provider: jobs.provider })
+            .from(jobs)
+            .where(
+              and(
+                eq(jobs.canonicalKey, job.canonicalKey),
+                ne(jobs.id, result[0].id),
+              ),
+            )
+            .limit(1);
+
+          if (existing.length > 0) {
+            await db
+              .update(jobs)
+              .set({ likelyDuplicateOfId: existing[0].id })
+              .where(eq(jobs.id, result[0].id));
+
+            duplicatesFound++;
+            log.info(
+              {
+                duplicateId: result[0].id,
+                primaryId: existing[0].id,
+                primaryProvider: existing[0].provider,
+                provider: job.provider,
+                company: job.company,
+                title: job.title,
+                canonicalKey: job.canonicalKey,
+              },
+              'Likely duplicate found — flagged',
+            );
+          } else {
+            const companyTitlePrefix = `${normalizeCompany(job.company!)}::${normalizeTitle(job.title!)}::`;
+            const sameTitle = await db
+              .select({ id: jobs.id, provider: jobs.provider })
+              .from(jobs)
+              .where(
+                and(
+                  sql`${jobs.canonicalKey} LIKE ${companyTitlePrefix + '%'}`,
+                  ne(jobs.id, result[0].id),
+                ),
+              )
+              .limit(1);
+
+            if (sameTitle.length > 0) {
+              log.warn(
+                {
+                  newId: result[0].id,
+                  existingId: sameTitle[0].id,
+                  existingProvider: sameTitle[0].provider,
+                  provider: job.provider,
+                  company: job.company,
+                  title: job.title,
+                },
+                'Same company+title but different description — kept as separate job',
+              );
+            }
+          }
+        }
+
         inserted.push(job);
       }
     } catch (err) {
@@ -91,7 +172,11 @@ async function insertNewJobs(normalized: NewJob[]): Promise<NewJob[]> {
     }
   }
 
-  return inserted;
+  if (duplicatesFound > 0) {
+    log.info({ duplicatesFound }, 'Cross-provider duplicates flagged in this batch');
+  }
+
+  return { inserted, duplicatesFound };
 }
 
 async function scoreNewJobs(newJobs: NewJob[]): Promise<number> {
@@ -103,6 +188,11 @@ async function scoreNewJobs(newJobs: NewJob[]): Promise<number> {
   const tasks = newJobs.map(job =>
     limit(async () => {
       try {
+        if (job.likelyDuplicateOfId) {
+          log.debug({ externalId: job.externalId }, 'Skipping scoring — likely duplicate');
+          return;
+        }
+
         if (!job.description) {
           log.debug({ externalId: job.externalId }, 'Skipping scoring — no description');
           return;
@@ -184,6 +274,7 @@ async function runProviderIngestion(provider: JobProvider): Promise<IngestionRes
     afterRoleFilter: 0,
     afterLocationFilter: 0,
     inserted: 0,
+    duplicates: 0,
     scored: 0,
   };
 
@@ -214,15 +305,16 @@ async function runProviderIngestion(provider: JobProvider): Promise<IngestionRes
     // 4. Normalize
     const normalized = normalizeJobs(locationFiltered, provider.name);
 
-    // 5. Insert (deduplicate via ON CONFLICT)
-    const inserted = await insertNewJobs(normalized);
+    // 5. Insert (deduplicate via ON CONFLICT) + cross-provider soft dedup
+    const { inserted, duplicatesFound } = await insertNewJobs(normalized);
     result.inserted = inserted.length;
+    result.duplicates = duplicatesFound;
     log.info(
-      { provider: provider.name, new: inserted.length, total: normalized.length },
+      { provider: provider.name, new: inserted.length, duplicates: duplicatesFound, total: normalized.length },
       'Jobs inserted',
     );
 
-    // 6. Score new jobs
+    // 6. Score new jobs (duplicates skipped inside scoreNewJobs)
     result.scored = await scoreNewJobs(inserted);
     log.info(
       { provider: provider.name, scored: result.scored },
@@ -249,17 +341,25 @@ export async function runIngestion(): Promise<IngestionSummary> {
     return { results: [], staleMarked: 0, totalNew: 0 };
   }
 
-  // Run all providers in parallel
-  const settled = await Promise.allSettled(
-    providers.map(p => runProviderIngestion(p)),
-  );
-
+  // Run providers in priority tiers: sequential between tiers, parallel within
   const results: IngestionResult[] = [];
-  for (const s of settled) {
-    if (s.status === 'fulfilled') {
-      results.push(s.value);
-    } else {
-      log.error({ err: s.reason }, 'Provider ingestion rejected');
+
+  for (const tierNames of PROVIDER_TIERS) {
+    const tierProviders = providers.filter(p => tierNames.includes(p.name));
+    if (tierProviders.length === 0) continue;
+
+    log.info({ tier: tierNames, count: tierProviders.length }, 'Starting provider tier');
+
+    const settled = await Promise.allSettled(
+      tierProviders.map(p => runProviderIngestion(p)),
+    );
+
+    for (const s of settled) {
+      if (s.status === 'fulfilled') {
+        results.push(s.value);
+      } else {
+        log.error({ err: s.reason }, 'Provider ingestion rejected');
+      }
     }
   }
 
@@ -280,6 +380,7 @@ export async function runIngestion(): Promise<IngestionSummary> {
         provider: r.provider,
         fetched: r.fetched,
         inserted: r.inserted,
+        duplicates: r.duplicates,
         scored: r.scored,
         error: r.error,
       })),

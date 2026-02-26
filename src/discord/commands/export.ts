@@ -1,5 +1,5 @@
 import { SlashCommandBuilder, type ChatInputCommandInteraction } from 'discord.js';
-import { eq, and, desc, sql } from 'drizzle-orm';
+import { eq, and, desc, sql, isNull } from 'drizzle-orm';
 import { db } from '../../db/client.js';
 import { jobs } from '../../db/schema.js';
 import { isGoogleConfigured, appendJobsToSheet } from '../../export/sheets.js';
@@ -60,6 +60,7 @@ export const exportCommand: BotCommand = {
           and(
             eq(jobs.exportStatus, 'pending'),
             eq(jobs.isStale, false),
+            isNull(jobs.likelyDuplicateOfId),
           ),
         )
         .orderBy(desc(jobs.score));

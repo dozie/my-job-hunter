@@ -9,6 +9,7 @@ import {
   integer,
   uniqueIndex,
   index,
+  type AnyPgColumn,
 } from 'drizzle-orm/pg-core';
 
 export const jobs = pgTable('jobs', {
@@ -27,6 +28,8 @@ export const jobs = pgTable('jobs', {
   summary: text('summary'),
   interviewStyle: text('interview_style').default('unknown'),
   compensation: text('compensation'),
+  canonicalKey: text('canonical_key'),
+  likelyDuplicateOfId: integer('likely_duplicate_of_id').references((): AnyPgColumn => jobs.id),
   exportStatus: text('export_status').default('pending'),
   exportCursor: integer('export_cursor').default(0),
   isStale: boolean('is_stale').default(false),
@@ -38,6 +41,8 @@ export const jobs = pgTable('jobs', {
   index('idx_jobs_seniority').on(table.seniority),
   index('idx_jobs_export_status').on(table.exportStatus),
   index('idx_jobs_stale').on(table.isStale),
+  index('idx_jobs_canonical_key').on(table.canonicalKey),
+  index('idx_jobs_likely_duplicate').on(table.likelyDuplicateOfId),
 ]);
 
 export const ingestionLogs = pgTable('ingestion_logs', {

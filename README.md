@@ -4,7 +4,7 @@ A personal job-hunting automation system that retrieves software engineering job
 
 ## Features
 
-- **Multi-source ingestion** — Fetches jobs from Greenhouse, Ashby, Adzuna, Remotive, and Coresignal APIs
+- **Multi-source ingestion** — Fetches jobs from Greenhouse, Ashby, Adzuna, Remotive, Coresignal, and Bright Data (LinkedIn, Indeed, Glassdoor) APIs
 - **Smart filtering** — Two-pass title filter (exclude frontend, include SE keywords) + location/remote filter
 - **AI-powered scoring** — Claude Haiku extracts metadata; Sonnet generates match summaries (score threshold-gated); weighted scoring ranks jobs 0–10
 - **Resume tailoring** — Claude Opus rewrites your resume bullets to match each JD, outputs styled HTML
@@ -15,7 +15,8 @@ A personal job-hunting automation system that retrieves software engineering job
 - **Email summaries** — Send HTML email digest of exported jobs via SMTP
 - **Discord bot** — 10 slash commands with paginated embeds
 - **Scheduled runs** — Ingests every 4 hours (06:00–18:00 ET) via node-cron
-- **Deduplication** — Unique constraint on `(external_id, provider)` prevents duplicates
+- **Deduplication** — Per-provider unique constraint on `(external_id, provider)` + cross-provider soft dedup via canonical key (normalized company + title + description fingerprint). Duplicates are flagged, not deleted, and hidden from display/export
+- **Priority-tiered ingestion** — Providers run in priority order (Coresignal → Bright Data → Greenhouse/Ashby/Adzuna/Remotive) so higher-quality sources establish primacy for dedup
 - **Stale job expiry** — Jobs older than 30 days are auto-marked stale
 
 ## Tech Stack
@@ -57,7 +58,8 @@ src/
 │       ├── ashby.ts            # Ashby Posting API
 │       ├── adzuna.ts           # Adzuna job aggregator API
 │       ├── remotive.ts         # Remotive remote jobs API
-│       └── coresignal.ts       # Coresignal Base Jobs API (search + collect)
+│       ├── coresignal.ts       # Coresignal Base Jobs API (search + collect)
+│       └── brightdata.ts       # Bright Data Jobs Scraper (LinkedIn, Indeed, Glassdoor)
 ├── scoring/
 │   ├── analyzer.ts             # Claude Haiku metadata extraction
 │   ├── summarizer.ts           # Claude Sonnet match summaries
@@ -104,6 +106,7 @@ src/
 - (Optional) Gmail app password for email summaries
 - (Optional) Adzuna API credentials for Adzuna provider
 - (Optional) Coresignal API key for Coresignal provider
+- (Optional) Bright Data API token for Bright Data provider (LinkedIn, Indeed, Glassdoor)
 
 ### 1. Clone and install
 
@@ -151,6 +154,13 @@ coresignal:
   enabled: false  # Requires CORESIGNAL_API_KEY, credit-based
   boards:
     - { name: "Canada Software Engineers", country: "Canada", keywords: "software engineer", employmentType: "Full-time", maxCollect: 50 }
+
+brightdata:
+  enabled: false  # Requires BRIGHTDATA_API_TOKEN, pay-as-you-go
+  boards:
+    - { name: "LinkedIn Backend Canada", category: "linkedin", keywords: "backend engineer", country: "Canada", maxCollect: 100 }
+    - { name: "Indeed Software Canada", category: "indeed", keywords: "software engineer", country: "Canada", maxCollect: 100 }
+    - { name: "Glassdoor Platform Canada", category: "glassdoor", keywords: "platform engineer", country: "Canada", maxCollect: 50 }
 ```
 
 ### 4. Configure scoring
@@ -221,6 +231,8 @@ Jobs are scored 0–10 using a weighted formula:
 - **Caching**: Resume, cover letter, and "why us" results are cached in DB — calling the same command twice returns the cached version at zero cost
 - **On-demand only**: Opus calls (`/tailor`, `/generate-cover`, `/generate-response`) only fire when you explicitly request them
 - **Coresignal credit cap**: Each board has a configurable `maxCollect` limit (default 50) to prevent runaway collect credit usage
+- **Bright Data record cap**: Each board has a configurable `maxCollect` limit (default 100) mapped to `limit_per_input` (~$1.50/1K records)
+- **Duplicate scoring skip**: Cross-provider duplicates are not sent to the AI scorer, saving LLM cost
 - **Estimated cost**: Haiku ~$0.001/job, Sonnet ~$0.005/job (threshold-gated), Opus ~$0.03/use
 
 ## Google Cloud Setup (Optional)
@@ -293,6 +305,44 @@ Required if you enable the `coresignal` provider in `config/providers.yml`.
 | `keywords` | No | Filter by job title keywords |
 | `employmentType` | No | "Full-time", "Part-time", "Contract", etc. |
 | `maxCollect` | No | Max records to collect per board (default: 50) |
+
+## Bright Data Setup (Optional)
+
+Required if you enable the `brightdata` provider in `config/providers.yml`. Scrapes jobs from LinkedIn, Indeed, and Glassdoor via Bright Data's Jobs Scraper API.
+
+1. Sign up at [brightdata.com](https://brightdata.com/) — pay-as-you-go pricing (~$1.50/1K records)
+2. From the dashboard, copy your **API Token**
+3. Set in `.env`:
+   ```
+   BRIGHTDATA_API_TOKEN=your_api_token
+   ```
+4. Enable in `config/providers.yml`: set `brightdata.enabled: true`
+5. Configure boards with source categories:
+   ```yaml
+   brightdata:
+     enabled: true
+     boards:
+       - { name: "LinkedIn Backend Canada", category: "linkedin", keywords: "backend engineer", country: "Canada", maxCollect: 100 }
+       - { name: "Indeed Software Canada", category: "indeed", keywords: "software engineer", country: "Canada", maxCollect: 100 }
+   ```
+
+**Supported sources:** `linkedin`, `indeed`, `glassdoor`
+
+**How it works:** Each board triggers an async snapshot (trigger → poll → download). Polling uses linear backoff (15s → 60s cap) with a 5-minute timeout per board.
+
+**Cost per ingestion run:**
+- ~$0.0015 per record collected
+- A board with `maxCollect: 100` costs ~$0.15 per run
+- Cost estimate is logged after each snapshot download
+
+| Board Config | Required | Description |
+|-------------|----------|-------------|
+| `name` | Yes | Display name for logging |
+| `category` | Yes | Source: `linkedin`, `indeed`, or `glassdoor` |
+| `keywords` | No | Job search keywords |
+| `country` | No | Country filter |
+| `employmentType` | No | LinkedIn/Indeed job type filter |
+| `maxCollect` | No | Max records per board (default: 100) |
 
 ## Email Setup (Optional)
 

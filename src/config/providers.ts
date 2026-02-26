@@ -44,6 +44,10 @@ const providersConfigSchema = z.object({
     enabled: z.boolean(),
     boards: z.array(boardSchema),
   }),
+  brightdata: z.object({
+    enabled: z.boolean(),
+    boards: z.array(boardSchema),
+  }),
   filters: filtersSchema,
 });
 
@@ -71,6 +75,7 @@ export function loadProvidersConfig(): ProvidersConfig {
         adzuna: _config.adzuna.boards.length,
         remotive: _config.remotive.boards.length,
         coresignal: _config.coresignal.boards.length,
+        brightdata: _config.brightdata.boards.length,
       },
       'Providers config loaded',
     );

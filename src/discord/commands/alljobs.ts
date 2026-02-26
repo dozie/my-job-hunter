@@ -1,5 +1,5 @@
 import { SlashCommandBuilder, type ChatInputCommandInteraction } from 'discord.js';
-import { desc, eq, and } from 'drizzle-orm';
+import { desc, eq, and, isNull } from 'drizzle-orm';
 import { db } from '../../db/client.js';
 import { jobs } from '../../db/schema.js';
 import { buildJobEmbed } from '../embeds.js';
@@ -32,7 +32,7 @@ export const alljobsCommand: BotCommand = {
     const limit = interaction.options.getInteger('limit') ?? 25;
     const seniority = interaction.options.getString('seniority');
 
-    const conditions = [eq(jobs.isStale, false)];
+    const conditions = [eq(jobs.isStale, false), isNull(jobs.likelyDuplicateOfId)];
     if (seniority) {
       conditions.push(eq(jobs.seniority, seniority));
     }

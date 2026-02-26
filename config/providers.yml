@@ -27,6 +27,13 @@ coresignal:
     - { name: "Canada Software Engineers", country: "Canada", keywords: "software engineer", employmentType: "Full-time", maxCollect: 50 }
     - { name: "US Software Engineers", country: "United States", keywords: "software engineer", employmentType: "Full-time", maxCollect: 50 }
 
+brightdata:
+  enabled: false  # Requires BRIGHTDATA_API_TOKEN. Pay-as-you-go: ~$1.50/1K records.
+  boards:
+    - { name: "LinkedIn Backend Canada", category: "linkedin", keywords: "backend engineer", country: "Canada", maxCollect: 100 }
+    - { name: "Indeed Software Canada", category: "indeed", keywords: "software engineer", country: "Canada", maxCollect: 100 }
+    - { name: "Glassdoor Platform Canada", category: "glassdoor", keywords: "platform engineer", country: "Canada", maxCollect: 50 }
+
 # Role keyword filters (case-insensitive)
 filters:
   exclude_titles:

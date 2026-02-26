@@ -1,5 +1,5 @@
 import { SlashCommandBuilder, type ChatInputCommandInteraction } from 'discord.js';
-import { desc, eq, and } from 'drizzle-orm';
+import { desc, eq, and, isNull } from 'drizzle-orm';
 import { db } from '../../db/client.js';
 import { jobs } from '../../db/schema.js';
 import { buildJobEmbed } from '../embeds.js';
@@ -22,7 +22,7 @@ export const topjobsCommand: BotCommand = {
     const topJobs = await db
       .select()
       .from(jobs)
-      .where(and(eq(jobs.isStale, false)))
+      .where(and(eq(jobs.isStale, false), isNull(jobs.likelyDuplicateOfId)))
       .orderBy(desc(jobs.score))
       .limit(limit);
 

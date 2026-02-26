@@ -29,6 +29,9 @@ const envSchema = z.object({
 
   // Coresignal (optional — needed if coresignal provider is enabled in providers.yml)
   CORESIGNAL_API_KEY: z.string().optional(),
+
+  // Bright Data (optional — needed if brightdata provider is enabled in providers.yml)
+  BRIGHTDATA_API_TOKEN: z.string().optional(),
 });
 
 export type Env = z.infer<typeof envSchema>;
