@@ -1,6 +1,6 @@
-import { eq, and, desc, isNull, sql } from 'drizzle-orm';
+import { eq, and, desc, isNull, notInArray, sql } from 'drizzle-orm';
 import { db } from './client.js';
-import { jobs } from './schema.js';
+import { jobs, applications } from './schema.js';
 import type { Job } from './schema.js';
 
 interface QueryJobsOptions {
@@ -9,17 +9,27 @@ interface QueryJobsOptions {
   unexportedOnly?: boolean;
 }
 
+const APPLIED_STATUSES = ['applied', 'interviewing', 'offer'];
+
 /**
  * Query jobs with company-interleaved ordering.
  * Uses ROW_NUMBER() OVER (PARTITION BY company ORDER BY score DESC)
  * so the top job from each company appears first, then second-best from each, etc.
+ * Excludes jobs that have been applied to, are in interviews, or have an offer.
  */
 export async function queryJobsInterleaved(options: QueryJobsOptions = {}): Promise<Job[]> {
   const { limit, seniority, unexportedOnly } = options;
 
+  // IDs of jobs with an active application status
+  const appliedJobIds = db
+    .select({ jobId: applications.jobId })
+    .from(applications)
+    .where(notInArray(applications.status, ['not_applied', 'rejected']));
+
   const conditions: ReturnType<typeof eq>[] = [
     eq(jobs.isStale, false),
     isNull(jobs.likelyDuplicateOfId),
+    sql`${jobs.id} NOT IN (${appliedJobIds})`,
   ];
   if (seniority) conditions.push(eq(jobs.seniority, seniority));
   if (unexportedOnly) conditions.push(eq(jobs.exportStatus, 'pending'));
