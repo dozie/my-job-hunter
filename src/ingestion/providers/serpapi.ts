@@ -90,8 +90,7 @@ export class SerpApiProvider implements JobProvider {
         throw new Error(`SerpApi ${board.name}: ${data.error}`);
       }
 
-      const remoteJobs = (data.jobs_results ?? [])
-        .filter(job => job.detected_extensions?.work_from_home === true)
+      const mapped = (data.jobs_results ?? [])
         .map((job): RawJob => ({
           externalId: job.job_id,
           title: job.title,
@@ -99,7 +98,7 @@ export class SerpApiProvider implements JobProvider {
           link: this.pickBestLink(job),
           description: job.description,
           location: job.location,
-          remoteEligible: true,
+          remoteEligible: job.detected_extensions?.work_from_home === true ? true : undefined,
           compensation: job.detected_extensions?.salary,
           metadata: {
             postedAt: job.detected_extensions?.posted_at,
@@ -108,7 +107,7 @@ export class SerpApiProvider implements JobProvider {
           },
         }));
 
-      allJobs.push(...remoteJobs);
+      allJobs.push(...mapped);
 
       nextPageToken = data.serpapi_pagination?.next_page_token;
       if (!nextPageToken || allJobs.length >= maxCollect) break;
