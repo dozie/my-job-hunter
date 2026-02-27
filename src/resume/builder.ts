@@ -7,7 +7,7 @@ import { db } from '../db/client.js';
 import { jobs, resumes } from '../db/schema.js';
 import { tailorResume } from './tailorer.js';
 import { renderResumeHtml } from './renderer.js';
-import { isDriveConfigured, uploadResume } from '../export/drive.js';
+import { isR2Configured, uploadResume } from '../export/r2.js';
 import { logger } from '../observability/logger.js';
 
 const log = logger.child({ module: 'resume:builder' });
@@ -65,7 +65,7 @@ export interface BuildResumeResult {
   html: string;
   jsonData: ResumeData;
   cached: boolean;
-  driveLink: string | null;
+  resumeLink: string | null;
 }
 
 export async function buildResume(
@@ -81,12 +81,29 @@ export async function buildResume(
       .limit(1);
 
     if (existing.length > 0) {
+      let resumeLink = existing[0].resumeLink ?? null;
+
+      // Retry R2 upload if previously failed
+      if (!resumeLink && isR2Configured()) {
+        try {
+          const [job] = await db.select().from(jobs).where(eq(jobs.id, jobId)).limit(1);
+          if (job) {
+            const result = await uploadResume(existing[0].html, job.company, job.title);
+            resumeLink = result.publicUrl;
+            await db.update(resumes).set({ resumeLink }).where(eq(resumes.jobId, jobId));
+            log.info({ jobId, resumeLink }, 'Retried R2 upload for cached resume');
+          }
+        } catch (err) {
+          log.warn({ err, jobId }, 'R2 upload retry failed');
+        }
+      }
+
       log.info({ jobId }, 'Returning cached resume');
       return {
         html: existing[0].html,
         jsonData: existing[0].jsonData as ResumeData,
         cached: true,
-        driveLink: existing[0].driveLink ?? null,
+        resumeLink,
       };
     }
   }
@@ -117,19 +134,19 @@ export async function buildResume(
     jsonData: tailored as Record<string, unknown>,
   });
 
-  // Upload to Google Drive if configured
-  let driveLink: string | null = null;
-  if (isDriveConfigured()) {
+  // Upload to Cloudflare R2 if configured
+  let resumeLink: string | null = null;
+  if (isR2Configured()) {
     try {
       const result = await uploadResume(html, job.company, job.title);
-      driveLink = result.webViewLink;
-      await db.update(resumes).set({ driveLink }).where(eq(resumes.jobId, jobId));
-      log.info({ jobId, driveLink }, 'Resume uploaded to Google Drive');
+      resumeLink = result.publicUrl;
+      await db.update(resumes).set({ resumeLink }).where(eq(resumes.jobId, jobId));
+      log.info({ jobId, resumeLink }, 'Resume uploaded to R2');
     } catch (err) {
-      log.error({ err, jobId }, 'Failed to upload resume to Drive — resume saved locally');
+      log.error({ err, jobId }, 'Failed to upload resume to R2 — resume saved locally');
     }
   }
 
   log.info({ jobId }, 'Resume built and stored');
-  return { html, jsonData: tailored, cached: false, driveLink };
+  return { html, jsonData: tailored, cached: false, resumeLink };
 }

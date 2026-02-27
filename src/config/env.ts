@@ -35,6 +35,13 @@ const envSchema = z.object({
 
   // SerpApi (optional — needed if serpapi provider is enabled in providers.yml)
   SERPAPI_API_KEY: z.string().optional(),
+
+  // Cloudflare R2 (optional — resume storage)
+  R2_ACCOUNT_ID: z.string().optional(),
+  R2_ACCESS_KEY_ID: z.string().optional(),
+  R2_SECRET_ACCESS_KEY: z.string().optional(),
+  R2_BUCKET_NAME: z.string().optional(),
+  R2_PUBLIC_URL: z.string().optional(),
 });
 
 export type Env = z.infer<typeof envSchema>;

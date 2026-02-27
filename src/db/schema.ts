@@ -59,7 +59,7 @@ export const resumes = pgTable('resumes', {
   jobId: integer('job_id').references(() => jobs.id),
   html: text('html').notNull(),
   jsonData: jsonb('json_data'),
-  driveLink: text('drive_link'),
+  resumeLink: text('resume_link'),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
 });
 

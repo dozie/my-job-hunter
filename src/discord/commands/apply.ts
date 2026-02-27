@@ -53,10 +53,10 @@ export const applyCommand: BotCommand = {
         .returning();
 
       // Auto-tailor resume if none cached
-      let driveLink: string | null = null;
+      let resumeLink: string | null = null;
       try {
         const resumeResult = await buildResume(jobId);
-        driveLink = resumeResult.driveLink;
+        resumeLink = resumeResult.resumeLink;
         if (!resumeResult.cached) {
           log.info({ jobId }, 'Auto-tailored resume for application');
         }
@@ -67,7 +67,7 @@ export const applyCommand: BotCommand = {
       // Sync to Google Sheets if configured
       if (isGoogleConfigured()) {
         try {
-          await appendApplicationRow(job, application, driveLink);
+          await appendApplicationRow(job, application, resumeLink);
         } catch (err) {
           log.error({ err, jobId }, 'Failed to sync application to Google Sheets');
         }
@@ -82,8 +82,8 @@ export const applyCommand: BotCommand = {
           { name: 'Status', value: 'applied', inline: true },
         );
 
-      if (driveLink) {
-        embed.addFields({ name: 'Resume', value: `[View on Drive](${driveLink})` });
+      if (resumeLink) {
+        embed.addFields({ name: 'Resume', value: `[View Resume](${resumeLink})` });
       } else {
         embed.addFields({ name: 'Resume', value: 'Not available (tailoring failed or no description)' });
       }

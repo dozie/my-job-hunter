@@ -54,7 +54,7 @@ CREATE TABLE "resumes" (
 	"job_id" integer,
 	"html" text NOT NULL,
 	"json_data" jsonb,
-	"drive_link" text,
+	"resume_link" text,
 	"created_at" timestamp with time zone DEFAULT now()
 );
 --> statement-breakpoint

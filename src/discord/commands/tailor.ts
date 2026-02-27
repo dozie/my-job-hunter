@@ -27,7 +27,7 @@ export const tailorCommand: BotCommand = {
       });
 
       const status = result.cached ? '(cached)' : '(freshly generated)';
-      const driveNote = result.driveLink ? `\nDrive: ${result.driveLink}` : '';
+      const driveNote = result.resumeLink ? `\nResume: ${result.resumeLink}` : '';
       await interaction.editReply({
         content: `Resume tailored for job #${jobId} ${status}${driveNote}`,
         files: [attachment],
