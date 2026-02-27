@@ -8,6 +8,8 @@ function buildTransport(): pino.TransportSingleOptions | pino.TransportMultiOpti
   }
 
   if (process.env.AXIOM_TOKEN && process.env.AXIOM_DATASET) {
+    // Always keep stdout so `docker compose logs` works
+    targets.push({ target: 'pino/file', options: { destination: 1 }, level: process.env.LOG_LEVEL || 'info' });
     targets.push({
       target: '@axiomhq/pino',
       options: {
