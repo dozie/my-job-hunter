@@ -1,6 +1,5 @@
 node_modules/
 dist/
 .env
-drizzle/meta/
 *.tsbuildinfo
 config/resume-base.json
