@@ -4,8 +4,11 @@ import { logger } from '../../observability/logger.js';
 
 const log = logger.child({ module: 'provider:serpapi' });
 
-const RESULTS_PER_PAGE = 10; // Fixed by Google Jobs API
 const MAX_PAGES = 3; // Safety cap to protect free tier budget
+const MONTHLY_BUDGET = 240; // 96% of 250 free tier
+
+export type ExistingJobChecker = (ids: string[]) => Promise<number>;
+export type MonthlyUsageChecker = () => Promise<number>;
 
 interface SerpApiJobResult {
   job_id: string;
@@ -33,15 +36,44 @@ export class SerpApiProvider implements JobProvider {
   readonly name = 'serpapi';
   private boards: Board[];
   private apiKey: string;
+  private maxDepth: number;
+  private checkExisting?: ExistingJobChecker;
+  private checkMonthlyUsage?: MonthlyUsageChecker;
 
-  constructor(boards: Board[], apiKey: string) {
+  constructor(
+    boards: Board[],
+    apiKey: string,
+    maxDepth: number = 1,
+    checkExisting?: ExistingJobChecker,
+    checkMonthlyUsage?: MonthlyUsageChecker,
+  ) {
     this.boards = boards;
     this.apiKey = apiKey;
+    this.maxDepth = maxDepth;
+    this.checkExisting = checkExisting;
+    this.checkMonthlyUsage = checkMonthlyUsage;
   }
 
   async fetchJobs(): Promise<RawJob[]> {
+    // Budget safety valve — force shallow crawl if nearing monthly limit
+    let effectiveDepth = this.maxDepth;
+    if (this.checkMonthlyUsage) {
+      try {
+        const used = await this.checkMonthlyUsage();
+        if (used >= MONTHLY_BUDGET) {
+          log.warn({ used, budget: MONTHLY_BUDGET }, 'Monthly budget reached — forcing depth 1');
+          effectiveDepth = 1;
+        }
+      } catch (err) {
+        log.error({ err }, 'Failed to check monthly usage — defaulting to depth 1');
+        effectiveDepth = 1;
+      }
+    }
+
+    log.info({ depth: effectiveDepth, boards: this.boards.length }, 'SerpApi fetch starting');
+
     const results = await Promise.allSettled(
-      this.boards.map(board => this.fetchSearch(board)),
+      this.boards.map(board => this.fetchSearch(board, effectiveDepth)),
     );
 
     const allJobs: RawJob[] = [];
@@ -53,17 +85,17 @@ export class SerpApiProvider implements JobProvider {
       }
     }
 
-    log.info({ total: allJobs.length, searches: this.boards.length }, 'SerpApi fetch complete');
+    log.info({ total: allJobs.length, searches: this.boards.length, depth: effectiveDepth }, 'SerpApi fetch complete');
     return allJobs;
   }
 
-  private async fetchSearch(board: Board): Promise<RawJob[]> {
-    const maxCollect = board.maxCollect ?? RESULTS_PER_PAGE;
-    const maxPages = Math.min(Math.ceil(maxCollect / RESULTS_PER_PAGE), MAX_PAGES);
+  private async fetchSearch(board: Board, effectiveDepth: number): Promise<RawJob[]> {
+    const maxPages = Math.min(effectiveDepth, MAX_PAGES);
     const query = board.keywords || 'software engineer';
     const location = board.label || 'Canada';
     const allJobs: RawJob[] = [];
     let nextPageToken: string | undefined;
+    let pagesFetched = 0;
 
     for (let page = 0; page < maxPages; page++) {
       const url = new URL('https://serpapi.com/search');
@@ -77,18 +109,40 @@ export class SerpApiProvider implements JobProvider {
         url.searchParams.set('next_page_token', nextPageToken);
       }
 
-      log.debug({ board: board.name, page }, 'Fetching page');
-      const response = await fetch(url.toString());
+      log.debug({ board: board.name, page, maxPages }, 'Fetching page');
+
+      let response: Response;
+      try {
+        response = await fetch(url.toString());
+      } catch (err) {
+        // Network error on deeper pages — return partial results
+        if (page > 0) {
+          log.warn({ err, board: board.name, page }, 'Network error on deeper page — returning partial results');
+          break;
+        }
+        throw err;
+      }
 
       if (!response.ok) {
+        // Graceful degradation on deeper pages
+        if (page > 0) {
+          log.warn({ board: board.name, page, status: response.status }, 'HTTP error on deeper page — returning partial results');
+          break;
+        }
         throw new Error(`SerpApi ${board.name} page ${page}: HTTP ${response.status}`);
       }
 
       const data = (await response.json()) as SerpApiResponse;
 
       if (data.error) {
+        if (page > 0) {
+          log.warn({ board: board.name, page, error: data.error }, 'API error on deeper page — returning partial results');
+          break;
+        }
         throw new Error(`SerpApi ${board.name}: ${data.error}`);
       }
+
+      pagesFetched++;
 
       const mapped = (data.jobs_results ?? [])
         .map((job): RawJob => ({
@@ -109,11 +163,29 @@ export class SerpApiProvider implements JobProvider {
 
       allJobs.push(...mapped);
 
+      // Newness gate: if page 1 results are all already in DB, skip deeper pages
+      if (page === 0 && maxPages > 1 && this.checkExisting && mapped.length > 0) {
+        try {
+          const ids = mapped.map(j => j.externalId);
+          const existingCount = await this.checkExisting(ids);
+          if (existingCount === ids.length) {
+            log.info({ board: board.name, checked: ids.length, existing: existingCount }, 'Page 1 all seen — skipping deeper pages');
+            break;
+          }
+          log.debug({ board: board.name, checked: ids.length, existing: existingCount, new: ids.length - existingCount }, 'Newness check — proceeding to deeper pages');
+        } catch (err) {
+          log.error({ err, board: board.name }, 'Newness check failed — proceeding anyway');
+        }
+      }
+
       nextPageToken = data.serpapi_pagination?.next_page_token;
-      if (!nextPageToken || allJobs.length >= maxCollect) break;
+      if (!nextPageToken) break;
     }
 
-    log.debug({ board: board.name, total: allJobs.length }, 'Search complete');
+    log.info(
+      { board: board.name, pagesAttempted: Math.min(maxPages, pagesFetched + 1), pagesFetched, totalResults: allJobs.length },
+      'Search complete',
+    );
     return allJobs;
   }
 

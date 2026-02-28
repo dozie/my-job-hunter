@@ -12,6 +12,7 @@ import { RemotiveProvider } from './providers/remotive.js';
 import { CoresignalProvider } from './providers/coresignal.js';
 import { BrightDataProvider } from './providers/brightdata.js';
 import { SerpApiProvider } from './providers/serpapi.js';
+import type { ExistingJobChecker, MonthlyUsageChecker } from './providers/serpapi.js';
 import { env } from '../config/env.js';
 import { passesRoleFilter, passesLocationFilter } from './filters.js';
 import { normalizeJobs, normalizeCompany, normalizeTitle } from './normalizer.js';
@@ -24,6 +25,53 @@ const log = logger.child({ module: 'orchestrator' });
 
 const SCORING_CONCURRENCY = 5;
 const STALE_DAYS = 30;
+
+/**
+ * Determine SerpApi crawl depth based on time of day.
+ * Morning: deep (3 pages), midday: medium (2), evening: shallow (1).
+ */
+function getSerpApiDepth(): number {
+  const hour = new Date().getHours();
+  if (hour < 9) return 3;   // Morning: pages 1-2-3
+  if (hour < 15) return 2;  // Midday: pages 1-2
+  return 1;                  // Evening: page 1 only
+}
+
+/** Check how many SerpApi searches have been logged this month. */
+const checkSerpApiMonthlyUsage: MonthlyUsageChecker = async () => {
+  const startOfMonth = new Date();
+  startOfMonth.setDate(1);
+  startOfMonth.setHours(0, 0, 0, 0);
+
+  const result = await db
+    .select({ count: sql<number>`count(*)` })
+    .from(ingestionLogs)
+    .where(
+      and(
+        eq(ingestionLogs.provider, 'serpapi'),
+        sql`${ingestionLogs.ranAt} >= ${startOfMonth}`,
+      ),
+    );
+
+  return Number(result[0]?.count ?? 0);
+};
+
+/** Check how many of the given externalIds already exist for SerpApi. */
+const checkSerpApiExisting: ExistingJobChecker = async (ids: string[]) => {
+  if (ids.length === 0) return 0;
+
+  const result = await db
+    .select({ count: sql<number>`count(*)` })
+    .from(jobs)
+    .where(
+      and(
+        eq(jobs.provider, 'serpapi'),
+        sql`${jobs.externalId} = ANY(${ids})`,
+      ),
+    );
+
+  return Number(result[0]?.count ?? 0);
+};
 
 const PROVIDER_TIERS: string[][] = [
   ['coresignal'],
@@ -85,7 +133,15 @@ function buildProviders(): JobProvider[] {
   }
   if (config.serpapi.enabled && config.serpapi.boards.length > 0) {
     if (env.SERPAPI_API_KEY) {
-      providers.push(new SerpApiProvider(config.serpapi.boards, env.SERPAPI_API_KEY));
+      const depth = getSerpApiDepth();
+      log.info({ serpApiDepth: depth }, 'SerpApi depth determined by time of day');
+      providers.push(new SerpApiProvider(
+        config.serpapi.boards,
+        env.SERPAPI_API_KEY,
+        depth,
+        checkSerpApiExisting,
+        checkSerpApiMonthlyUsage,
+      ));
     } else {
       log.warn('SerpApi enabled but SERPAPI_API_KEY not set — skipping');
     }
