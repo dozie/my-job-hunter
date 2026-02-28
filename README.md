@@ -11,9 +11,9 @@ A personal job-hunting automation system that retrieves software engineering job
 - **Cover letters & "Why us?"** — On-demand AI generation, cached to avoid duplicate cost
 - **Google Sheets export** — Export jobs and track applications in a Google Sheet
 - **Google Drive resume storage** — Auto-upload tailored resumes to Drive with shareable links
-- **Application tracking** — Track application status (applied → interviewing → offer/rejected) in DB + Sheets
+- **Application tracking** — Track application status (applied → interviewing → offer/rejected/skipped) in DB + Sheets
 - **Email summaries** — Send HTML email digest of exported jobs via SMTP
-- **Discord bot** — 11 slash commands with paginated embeds
+- **Discord bot** — 9 slash commands with paginated embeds
 - **Scheduled runs** — Ingests every 4 hours (06:00–18:00 ET) via node-cron
 - **Deduplication** — Per-provider unique constraint on `(external_id, provider)` + cross-provider soft dedup via canonical key (normalized company + title + description fingerprint). Duplicates are flagged, not deleted, and hidden from display/export
 - **Priority-tiered ingestion** — Providers run in priority order (Coresignal → Bright Data → Greenhouse/Ashby/Adzuna/Remotive → SerpApi) so higher-quality sources establish primacy for dedup
@@ -30,7 +30,7 @@ A personal job-hunting automation system that retrieves software engineering job
 | Export | google-spreadsheet v5 + googleapis (Drive) |
 | Email | nodemailer (SMTP) |
 | Scheduler | node-cron v3 |
-| Logging | pino |
+| Logging | pino + Axiom |
 | Config | YAML (scoring/providers) + .env (secrets) |
 | Deploy | Docker Compose |
 
@@ -81,16 +81,14 @@ src/
 │   ├── embeds.ts               # Job card embed builder
 │   ├── pagination.ts           # Paginated embed navigation
 │   └── commands/
-│       ├── topjobs.ts          # /topjobs [limit]
-│       ├── alljobs.ts          # /alljobs [limit] [seniority]
+│       ├── jobs.ts             # /jobs [view] [filter] [seniority] [limit]
 │       ├── job.ts              # /job [jobId]
-│       ├── tailor.ts           # /tailor [jobId]
-│       ├── generate-cover.ts   # /generate-cover [jobId]
-│       ├── generate-response.ts # /generate-response [jobId]
+│       ├── generate.ts         # /generate [jobId] [type] [force]
+│       ├── apply.ts            # /apply [jobId] [notes]
+│       ├── skip.ts             # /skip [jobId]
+│       ├── status.ts           # /status [jobId] [status] [notes]
 │       ├── rescore.ts          # /rescore
 │       ├── export.ts           # /export [mode] [count] [email]
-│       ├── apply.ts            # /apply [jobId] [notes]
-│       ├── status.ts           # /status [jobId] [status] [notes]
 │       └── stats.ts            # /stats
 └── observability/
     └── logger.ts               # pino structured logging
@@ -208,17 +206,15 @@ Jobs are scored 0–10 using a weighted formula:
 
 | Command | Options | Description |
 |---------|---------|-------------|
-| `/top` | `limit` (default 10) | Show top-scored jobs, sorted by score |
-| `/all` | `limit` (default 25), `seniority` | All jobs with optional seniority filter |
+| `/jobs` | `view` (top/all), `filter` (unapplied/applied), `seniority`, `limit` | Browse jobs. Defaults to top 10 unapplied. Use `filter:applied` to see applied jobs. |
 | `/job` | `jobid` (required) | View full job details: score breakdown, compensation, description |
+| `/skip` | `jobid` (required) | Dismiss a job from listings permanently |
 
 ### AI Generation
 
 | Command | Options | Description |
 |---------|---------|-------------|
-| `/tailor` | `jobid` (required), `force` (optional) | Generate a tailored HTML resume for a specific job (Claude Opus). Returns cached version unless `force` is set. |
-| `/generate-cover` | `jobid` (required), `force` (optional) | Generate a cover letter tailored to the job (Claude Opus). Cached by default. |
-| `/generate-response` | `jobid` (required), `force` (optional) | Generate a "Why this company?" response for an application (Claude Opus). Cached by default. |
+| `/generate` | `jobid` (required), `type` (resume/cover-letter/why-company), `force` (optional) | Generate AI content for a job. `resume` = tailored HTML resume (Opus), `cover-letter` = cover letter (Opus), `why-company` = "Why this company?" response (Opus). Cached by default. |
 
 ### Export & Tracking
 
@@ -226,7 +222,7 @@ Jobs are scored 0–10 using a weighted formula:
 |---------|---------|-------------|
 | `/export` | `mode` (top/next/all), `count` (default 25), `email` (optional) | Export unexported jobs to Google Sheets. `top` = highest scoring, `next` = next batch by cursor, `all` = everything. Optionally sends email summary. |
 | `/apply` | `jobid` (required), `notes` (optional) | Mark a job as applied. Auto-tailors a resume if none cached (~$0.40 via Opus). Creates application record in DB and syncs to Google Sheets "Applications" tab with resume Drive link. |
-| `/status` | `jobid` (required), `status` (applied/interviewing/rejected/offer), `notes` (optional) | Update application status in DB + Google Sheets. |
+| `/status` | `jobid` (required), `status` (applied/interviewing/rejected/offer/skipped), `notes` (optional) | Update application status in DB + Google Sheets. |
 
 ### System
 
@@ -239,7 +235,7 @@ Jobs are scored 0–10 using a weighted formula:
 
 - **Score threshold**: Sonnet summaries only generated for jobs scoring >= 5.0/10
 - **Caching**: Resume, cover letter, and "why us" results are cached in DB — calling the same command twice returns the cached version at zero cost
-- **On-demand only**: Opus calls (`/tailor`, `/generate-cover`, `/generate-response`) only fire when you explicitly request them. `/apply` auto-tailors if no cached resume exists.
+- **On-demand only**: Opus calls (`/generate`) only fire when you explicitly request them. `/apply` auto-tailors if no cached resume exists.
 - **Coresignal credit cap**: Each board has a configurable `maxCollect` limit (default 50) to prevent runaway collect credit usage
 - **Bright Data record cap**: Each board has a configurable `maxCollect` limit (default 100) mapped to `limit_per_input` (~$1.50/1K records)
 - **Duplicate scoring skip**: Cross-provider duplicates are not sent to the AI scorer, saving LLM cost

@@ -1,6 +1,5 @@
 import cron from 'node-cron';
 import { runIngestion } from './orchestrator.js';
-import { sendIngestionAlert, sendErrorAlert } from '../discord/alerts.js';
 import { logger } from '../observability/logger.js';
 
 const log = logger.child({ module: 'scheduler' });
@@ -33,10 +32,8 @@ export function startScheduler(): cron.ScheduledTask {
           { totalNew: summary.totalNew, staleMarked: summary.staleMarked },
           'Scheduled ingestion complete',
         );
-        await sendIngestionAlert(summary);
       } catch (err) {
         log.error({ err }, 'Scheduled ingestion failed');
-        await sendErrorAlert('Scheduled ingestion', err);
       } finally {
         isRunning = false;
       }

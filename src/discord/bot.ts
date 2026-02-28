@@ -9,16 +9,14 @@ import {
 } from 'discord.js';
 import { env } from '../config/env.js';
 import { logger } from '../observability/logger.js';
-import { topCommand } from './commands/topjobs.js';
-import { allCommand } from './commands/alljobs.js';
-import { tailorCommand } from './commands/tailor.js';
-import { generateCoverCommand } from './commands/generate-cover.js';
-import { generateResponseCommand } from './commands/generate-response.js';
+import { jobsCommand } from './commands/jobs.js';
 import { jobCommand } from './commands/job.js';
+import { generateCommand } from './commands/generate.js';
+import { applyCommand } from './commands/apply.js';
+import { skipCommand } from './commands/skip.js';
+import { statusCommand } from './commands/status.js';
 import { rescoreCommand } from './commands/rescore.js';
 import { exportCommand } from './commands/export.js';
-import { applyCommand } from './commands/apply.js';
-import { statusCommand } from './commands/status.js';
 import { statsCommand } from './commands/stats.js';
 
 const log = logger.child({ module: 'discord:bot' });
@@ -29,16 +27,14 @@ export interface BotCommand {
 }
 
 const commands: BotCommand[] = [
-  topCommand,
-  allCommand,
-  tailorCommand,
-  generateCoverCommand,
-  generateResponseCommand,
+  jobsCommand,
   jobCommand,
+  generateCommand,
+  applyCommand,
+  skipCommand,
+  statusCommand,
   rescoreCommand,
   exportCommand,
-  applyCommand,
-  statusCommand,
   statsCommand,
 ];
 const commandMap = new Collection<string, BotCommand>();

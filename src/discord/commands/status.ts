@@ -25,6 +25,7 @@ export const statusCommand: BotCommand = {
           { name: 'interviewing', value: 'interviewing' },
           { name: 'rejected', value: 'rejected' },
           { name: 'offer', value: 'offer' },
+          { name: 'skipped', value: 'skipped' },
         ),
     )
     .addStringOption(opt =>

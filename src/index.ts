@@ -2,7 +2,6 @@ import { logger } from './observability/logger.js';
 import { env } from './config/env.js';
 import { runMigrations } from './db/migrate.js';
 import { startBot } from './discord/bot.js';
-import { setAlertClient } from './discord/alerts.js';
 import { startScheduler } from './ingestion/scheduler.js';
 import { runIngestion } from './ingestion/orchestrator.js';
 
@@ -16,7 +15,6 @@ async function main(): Promise<void> {
 
   // Start Discord bot
   const client = await startBot();
-  setAlertClient(client);
 
   // Start ingestion scheduler
   const scheduler = startScheduler();
