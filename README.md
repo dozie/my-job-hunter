@@ -239,6 +239,7 @@ Jobs are scored 0–10 using a weighted formula:
 - **Coresignal credit cap**: Each board has a configurable `maxCollect` limit (default 50) to prevent runaway collect credit usage
 - **Bright Data record cap**: Each board has a configurable `maxCollect` limit (default 100) mapped to `limit_per_input` (~$1.50/1K records)
 - **Duplicate scoring skip**: Cross-provider duplicates are not sent to the AI scorer, saving LLM cost
+- **SerpApi smart crawl**: Time-based depth + newness gate maximizes job discovery within 250/month free tier (see SerpApi Setup)
 - **Estimated cost**: Haiku ~$0.001/job, Sonnet ~$0.005/job (threshold-gated), Opus ~$0.03/use
 
 ## Google Cloud Setup (Optional)
@@ -369,18 +370,19 @@ Required if you enable the `serpapi` provider in `config/providers.yml`. Aggrega
        - { name: "Software Engineer Canada", keywords: "software engineer", label: "Canada", maxCollect: 10 }
    ```
 
-**Cost per ingestion run:**
-- Each board page = 1 search credit (10 results/page, fixed)
-- `maxCollect: 10` = 1 credit, `maxCollect: 20` = 2 credits
-- Free tier: 250 searches/month, 50/hour rate limit
-- Cached/repeated identical queries don't count toward quota
+**Smart budget management (250 searches/month free tier):**
+- **Time-based depth** — Morning (before 9am): 3 pages/board, Midday (9am–3pm): 2 pages/board, Evening (after 3pm): 1 page/board
+- **Newness gate** — After fetching page 1, checks if all results already exist in DB. If so, skips deeper pages to save credits
+- **Budget safety valve** — If monthly usage hits 240 searches (96%), forces depth to 1 for remaining runs
+- **Graceful degradation** — Errors on deeper pages return partial results instead of failing the entire board
+- Worst case: 240 searches/month (96%), typical: 180–220 with newness gate savings
+- Each page = 1 search credit (10 results/page, fixed by Google Jobs API)
 
 | Board Config | Required | Description |
 |-------------|----------|-------------|
 | `name` | Yes | Display name for logging |
 | `keywords` | Yes | Job search keywords |
 | `label` | No | SerpApi `location` parameter (e.g. "Canada", "United States") |
-| `maxCollect` | No | Max results to collect per board (default: 10) |
 
 ## Email Setup (Optional)
 
