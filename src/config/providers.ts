@@ -51,6 +51,8 @@ const providersConfigSchema = z.object({
   }),
   serpapi: z.object({
     enabled: z.boolean(),
+    maxPages: z.number().int().min(1).max(10).default(3),
+    monthlyBudget: z.number().int().min(1).default(240),
     boards: z.array(boardSchema),
   }),
   filters: filtersSchema,

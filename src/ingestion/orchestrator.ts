@@ -12,7 +12,7 @@ import { RemotiveProvider } from './providers/remotive.js';
 import { CoresignalProvider } from './providers/coresignal.js';
 import { BrightDataProvider } from './providers/brightdata.js';
 import { SerpApiProvider } from './providers/serpapi.js';
-import type { ExistingJobChecker, MonthlyUsageChecker } from './providers/serpapi.js';
+import type { ExistingJobChecker, MonthlyUsageChecker, SerpApiConfig } from './providers/serpapi.js';
 import { env } from '../config/env.js';
 import { passesRoleFilter, passesLocationFilter } from './filters.js';
 import { normalizeJobs, normalizeCompany, normalizeTitle } from './normalizer.js';
@@ -134,10 +134,15 @@ function buildProviders(): JobProvider[] {
   if (config.serpapi.enabled && config.serpapi.boards.length > 0) {
     if (env.SERPAPI_API_KEY) {
       const depth = getSerpApiDepth();
-      log.info({ serpApiDepth: depth }, 'SerpApi depth determined by time of day');
+      const serpApiConfig: SerpApiConfig = {
+        maxPages: config.serpapi.maxPages,
+        monthlyBudget: config.serpapi.monthlyBudget,
+      };
+      log.info({ serpApiDepth: depth, ...serpApiConfig }, 'SerpApi depth determined by time of day');
       providers.push(new SerpApiProvider(
         config.serpapi.boards,
         env.SERPAPI_API_KEY,
+        serpApiConfig,
         depth,
         checkSerpApiExisting,
         checkSerpApiMonthlyUsage,

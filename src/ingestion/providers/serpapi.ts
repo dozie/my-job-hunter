@@ -4,11 +4,13 @@ import { logger } from '../../observability/logger.js';
 
 const log = logger.child({ module: 'provider:serpapi' });
 
-const MAX_PAGES = 3; // Safety cap to protect free tier budget
-const MONTHLY_BUDGET = 240; // 96% of 250 free tier
-
 export type ExistingJobChecker = (ids: string[]) => Promise<number>;
 export type MonthlyUsageChecker = () => Promise<number>;
+
+export interface SerpApiConfig {
+  maxPages: number;
+  monthlyBudget: number;
+}
 
 interface SerpApiJobResult {
   job_id: string;
@@ -36,6 +38,7 @@ export class SerpApiProvider implements JobProvider {
   readonly name = 'serpapi';
   private boards: Board[];
   private apiKey: string;
+  private config: SerpApiConfig;
   private maxDepth: number;
   private checkExisting?: ExistingJobChecker;
   private checkMonthlyUsage?: MonthlyUsageChecker;
@@ -43,12 +46,14 @@ export class SerpApiProvider implements JobProvider {
   constructor(
     boards: Board[],
     apiKey: string,
+    config: SerpApiConfig,
     maxDepth: number = 1,
     checkExisting?: ExistingJobChecker,
     checkMonthlyUsage?: MonthlyUsageChecker,
   ) {
     this.boards = boards;
     this.apiKey = apiKey;
+    this.config = config;
     this.maxDepth = maxDepth;
     this.checkExisting = checkExisting;
     this.checkMonthlyUsage = checkMonthlyUsage;
@@ -60,8 +65,8 @@ export class SerpApiProvider implements JobProvider {
     if (this.checkMonthlyUsage) {
       try {
         const used = await this.checkMonthlyUsage();
-        if (used >= MONTHLY_BUDGET) {
-          log.warn({ used, budget: MONTHLY_BUDGET }, 'Monthly budget reached — forcing depth 1');
+        if (used >= this.config.monthlyBudget) {
+          log.warn({ used, budget: this.config.monthlyBudget }, 'Monthly budget reached — forcing depth 1');
           effectiveDepth = 1;
         }
       } catch (err) {
@@ -90,7 +95,7 @@ export class SerpApiProvider implements JobProvider {
   }
 
   private async fetchSearch(board: Board, effectiveDepth: number): Promise<RawJob[]> {
-    const maxPages = Math.min(effectiveDepth, MAX_PAGES);
+    const maxPages = Math.min(effectiveDepth, this.config.maxPages);
     const query = board.keywords || 'software engineer';
     const location = board.label || 'Canada';
     const allJobs: RawJob[] = [];
