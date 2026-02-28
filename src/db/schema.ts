@@ -57,8 +57,7 @@ export const ingestionLogs = pgTable('ingestion_logs', {
 export const resumes = pgTable('resumes', {
   id: serial('id').primaryKey(),
   jobId: integer('job_id').references(() => jobs.id),
-  html: text('html').notNull(),
-  jsonData: jsonb('json_data'),
+  jsonData: jsonb('json_data').notNull(),
   resumeLink: text('resume_link'),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
 });

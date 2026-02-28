@@ -81,6 +81,8 @@ export async function buildResume(
       .limit(1);
 
     if (existing.length > 0) {
+      const jsonData = existing[0].jsonData as ResumeData;
+      const html = renderResumeHtml(jsonData);
       let resumeLink = existing[0].resumeLink ?? null;
 
       // Retry R2 upload if previously failed
@@ -88,7 +90,7 @@ export async function buildResume(
         try {
           const [job] = await db.select().from(jobs).where(eq(jobs.id, jobId)).limit(1);
           if (job) {
-            const result = await uploadResume(existing[0].html, job.company, job.title);
+            const result = await uploadResume(html, job.company, job.title);
             resumeLink = result.publicUrl;
             await db.update(resumes).set({ resumeLink }).where(eq(resumes.jobId, jobId));
             log.info({ jobId, resumeLink }, 'Retried R2 upload for cached resume');
@@ -99,12 +101,7 @@ export async function buildResume(
       }
 
       log.info({ jobId }, 'Returning cached resume');
-      return {
-        html: existing[0].html,
-        jsonData: existing[0].jsonData as ResumeData,
-        cached: true,
-        resumeLink,
-      };
+      return { html, jsonData, cached: true, resumeLink };
     }
   }
 
@@ -127,10 +124,9 @@ export async function buildResume(
   // Render to HTML
   const html = renderResumeHtml(tailored);
 
-  // Store in DB
+  // Store in DB (HTML is ephemeral — re-rendered from jsonData on cache hit)
   await db.insert(resumes).values({
     jobId,
-    html,
     jsonData: tailored as Record<string, unknown>,
   });
 
