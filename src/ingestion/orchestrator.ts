@@ -49,7 +49,7 @@ const checkSerpApiMonthlyUsage: MonthlyUsageChecker = async () => {
     .where(
       and(
         eq(ingestionLogs.provider, 'serpapi'),
-        sql`${ingestionLogs.ranAt} >= ${startOfMonth}`,
+        sql`${ingestionLogs.ranAt} >= ${startOfMonth.toISOString()}`,
       ),
     );
 

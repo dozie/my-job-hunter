@@ -1,17 +1,25 @@
 greenhouse:
   enabled: true
   boards:
-    - { token: "shopify", name: "Shopify" }
     - { token: "stripe", name: "Stripe" }
+    - { token: "cloudflare", name: "Cloudflare" }
+    - { token: "datadog", name: "Datadog" }
+    - { token: "discord", name: "Discord" }
+    - { token: "figma", name: "Figma" }
+    - { token: "coinbase", name: "Coinbase" }
 
 ashby:
   enabled: true
   boards:
     - { name: "notion", label: "Notion" }
     - { name: "linear", label: "Linear" }
+    - { name: "deel", label: "Deel" }
+    - { name: "ramp", label: "Ramp" }
+    - { name: "cohere", label: "Cohere" }
+    - { name: "replit", label: "Replit" }
 
 adzuna:
-  enabled: false  # Requires ADZUNA_APP_ID and ADZUNA_APP_KEY env vars
+  enabled: true  # Requires ADZUNA_APP_ID and ADZUNA_APP_KEY env vars
   boards:
     - { name: "Canada Software", country: "ca", keywords: "software engineer" }
     - { name: "US Software", country: "us", keywords: "software engineer" }
