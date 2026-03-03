@@ -4,7 +4,7 @@ import { logger } from '../observability/logger.js';
 
 const log = logger.child({ module: 'scoring:analyzer' });
 
-const anthropic = new Anthropic();
+const anthropic = new Anthropic({ maxRetries: 5 });
 
 const extractionSchema = z.object({
   seniority: z.enum(['senior', 'mid', 'junior', 'lead', 'staff', 'unknown']),

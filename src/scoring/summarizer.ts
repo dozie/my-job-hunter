@@ -4,7 +4,7 @@ import type { JobMetadata } from './analyzer.js';
 
 const log = logger.child({ module: 'scoring:summarizer' });
 
-const anthropic = new Anthropic();
+const anthropic = new Anthropic({ maxRetries: 5 });
 
 const SUMMARY_SCORE_THRESHOLD = 5.0;
 const MAX_DESCRIPTION_LENGTH = 3000;

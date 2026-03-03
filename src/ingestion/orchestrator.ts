@@ -23,7 +23,7 @@ import { logger } from '../observability/logger.js';
 
 const log = logger.child({ module: 'orchestrator' });
 
-const SCORING_CONCURRENCY = 5;
+const SCORING_CONCURRENCY = 3;
 const STALE_DAYS = 30;
 
 /**
