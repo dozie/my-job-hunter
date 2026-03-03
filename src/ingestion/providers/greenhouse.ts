@@ -47,14 +47,18 @@ export class GreenhouseProvider implements JobProvider {
     const token = board.token || board.name;
     const url = `https://boards-api.greenhouse.io/v1/boards/${token}/jobs?content=true`;
 
-    log.debug({ board: board.name, url }, 'Fetching board');
+    log.info({ method: 'GET', url, board: board.name }, 'API request');
+    const startTime = Date.now();
     const response = await fetch(url);
+    const durationMs = Date.now() - startTime;
 
     if (!response.ok) {
+      log.info({ status: response.status, durationMs, board: board.name }, 'API response');
       throw new Error(`Greenhouse ${board.name}: HTTP ${response.status}`);
     }
 
     const data = (await response.json()) as GreenhouseResponse;
+    log.info({ status: response.status, durationMs, board: board.name, jobs: data.jobs.length }, 'API response');
 
     return data.jobs.map((job): RawJob => ({
       externalId: String(job.id),

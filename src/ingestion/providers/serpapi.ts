@@ -114,7 +114,8 @@ export class SerpApiProvider implements JobProvider {
         url.searchParams.set('next_page_token', nextPageToken);
       }
 
-      log.debug({ board: board.name, page, maxPages }, 'Fetching page');
+      log.info({ method: 'GET', board: board.name, page, maxPages, query, location }, 'API request');
+      const startTime = Date.now();
 
       let response: Response;
       try {
@@ -122,13 +123,15 @@ export class SerpApiProvider implements JobProvider {
       } catch (err) {
         // Network error on deeper pages — return partial results
         if (page > 0) {
-          log.warn({ err, board: board.name, page }, 'Network error on deeper page — returning partial results');
+          log.warn({ err, board: board.name, page, durationMs: Date.now() - startTime }, 'Network error on deeper page — returning partial results');
           break;
         }
         throw err;
       }
+      const durationMs = Date.now() - startTime;
 
       if (!response.ok) {
+        log.info({ status: response.status, durationMs, board: board.name, page }, 'API response');
         // Graceful degradation on deeper pages
         if (page > 0) {
           log.warn({ board: board.name, page, status: response.status }, 'HTTP error on deeper page — returning partial results');
@@ -146,6 +149,8 @@ export class SerpApiProvider implements JobProvider {
         }
         throw new Error(`SerpApi ${board.name}: ${data.error}`);
       }
+
+      log.info({ status: response.status, durationMs, board: board.name, page, results: data.jobs_results?.length ?? 0 }, 'API response');
 
       pagesFetched++;
 

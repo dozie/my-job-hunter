@@ -50,14 +50,18 @@ export class AshbyProvider implements JobProvider {
     const name = board.name;
     const url = `https://api.ashbyhq.com/posting-api/job-board/${name}?includeCompensation=true`;
 
-    log.debug({ board: board.label || name, url }, 'Fetching board');
+    log.info({ method: 'GET', url, board: board.label || name }, 'API request');
+    const startTime = Date.now();
     const response = await fetch(url);
+    const durationMs = Date.now() - startTime;
 
     if (!response.ok) {
+      log.info({ status: response.status, durationMs, board: board.label || name }, 'API response');
       throw new Error(`Ashby ${name}: HTTP ${response.status}`);
     }
 
     const data = (await response.json()) as AshbyResponse;
+    log.info({ status: response.status, durationMs, board: board.label || name, jobs: data.jobs.length }, 'API response');
 
     return data.jobs.map((job): RawJob => ({
       externalId: job.id,

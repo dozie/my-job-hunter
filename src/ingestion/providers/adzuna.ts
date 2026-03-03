@@ -67,14 +67,18 @@ export class AdzunaProvider implements JobProvider {
         url.searchParams.set('what', board.keywords);
       }
 
-      log.debug({ board: board.name, page }, 'Fetching page');
+      log.info({ method: 'GET', board: board.name, country, page, keywords: board.keywords }, 'API request');
+      const startTime = Date.now();
       const response = await fetch(url.toString());
+      const durationMs = Date.now() - startTime;
 
       if (!response.ok) {
+        log.info({ status: response.status, durationMs, board: board.name, page }, 'API response');
         throw new Error(`Adzuna ${board.name} page ${page}: HTTP ${response.status}`);
       }
 
       const data = (await response.json()) as AdzunaResponse;
+      log.info({ status: response.status, durationMs, board: board.name, page, results: data.results.length }, 'API response');
 
       const jobs = data.results.map((job): RawJob => ({
         externalId: String(job.id),

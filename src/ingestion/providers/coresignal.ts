@@ -137,7 +137,8 @@ export class CoresignalProvider implements JobProvider {
         url.searchParams.set('after', afterCursor);
       }
 
-      log.debug({ board: board.name, collected: ids.length, cursor: afterCursor }, 'Searching');
+      log.info({ method: 'POST', url: url.pathname, board: board.name, collected: ids.length, cursor: afterCursor }, 'API request (search)');
+      const startTime = Date.now();
 
       const response = await fetch(url.toString(), {
         method: 'POST',
@@ -147,12 +148,15 @@ export class CoresignalProvider implements JobProvider {
         },
         body: JSON.stringify(body),
       });
+      const durationMs = Date.now() - startTime;
 
       if (!response.ok) {
+        log.info({ status: response.status, durationMs, board: board.name }, 'API response (search)');
         throw new Error(`Coresignal search ${board.name}: HTTP ${response.status}`);
       }
 
       const pageIds = (await response.json()) as number[];
+      log.info({ status: response.status, durationMs, board: board.name, pageIds: pageIds.length }, 'API response (search)');
 
       if (pageIds.length === 0) break;
 
@@ -172,33 +176,44 @@ export class CoresignalProvider implements JobProvider {
     const limit = pLimit(COLLECT_CONCURRENCY);
     const fieldsParam = COLLECT_FIELDS.join(',');
 
+    log.info({ method: 'GET', ids: ids.length, concurrency: COLLECT_CONCURRENCY }, 'API request (collect batch)');
+    const batchStart = Date.now();
+
     const tasks = ids.map(id =>
       limit(async () => {
         const url = `${BASE_URL}/collect/${id}?fields=${fieldsParam}`;
+        const startTime = Date.now();
         const response = await fetch(url, {
           headers: { 'apikey': this.apiKey },
         });
+        const durationMs = Date.now() - startTime;
 
         if (!response.ok) {
-          log.warn({ id, status: response.status }, 'Collect failed for job ID');
+          log.warn({ id, status: response.status, durationMs }, 'Collect failed for job ID');
           return null;
         }
 
+        log.debug({ id, status: response.status, durationMs }, 'API response (collect)');
         return (await response.json()) as CoresignalJob;
       }),
     );
 
     const results = await Promise.allSettled(tasks);
     const jobs: CoresignalJob[] = [];
+    let failed = 0;
 
     for (const result of results) {
       if (result.status === 'fulfilled' && result.value) {
         jobs.push(result.value);
       } else if (result.status === 'rejected') {
+        failed++;
         log.warn({ err: result.reason }, 'Collect request rejected');
+      } else {
+        failed++;
       }
     }
 
+    log.info({ collected: jobs.length, failed, durationMs: Date.now() - batchStart }, 'API response (collect batch)');
     return jobs;
   }
 

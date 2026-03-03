@@ -134,9 +134,10 @@ export class BrightDataProvider implements JobProvider {
     const input = this.buildInput(board, source);
 
     log.info(
-      { board: board.name, source, maxRecords, datasetId },
-      'Triggering Bright Data snapshot',
+      { method: 'POST', url: url.pathname, board: board.name, source, maxRecords, datasetId },
+      'API request (trigger)',
     );
+    const startTime = Date.now();
 
     const response = await fetch(url.toString(), {
       method: 'POST',
@@ -146,18 +147,20 @@ export class BrightDataProvider implements JobProvider {
       },
       body: JSON.stringify([input]),
     });
+    const durationMs = Date.now() - startTime;
 
     if (!response.ok) {
       const text = await response.text();
+      log.info({ status: response.status, durationMs, board: board.name }, 'API response (trigger)');
       throw new Error(
         `Bright Data trigger ${board.name}: HTTP ${response.status} — ${text}`,
       );
     }
 
     const data = (await response.json()) as TriggerResponse;
-    log.debug(
-      { board: board.name, snapshotId: data.snapshot_id },
-      'Snapshot triggered',
+    log.info(
+      { status: response.status, durationMs, board: board.name, snapshotId: data.snapshot_id },
+      'API response (trigger)',
     );
     return data.snapshot_id;
   }
@@ -197,11 +200,15 @@ export class BrightDataProvider implements JobProvider {
       await this.delay(interval);
 
       const url = `${BASE_URL}/progress/${snapshotId}`;
+      log.debug({ method: 'GET', board: boardName, snapshotId }, 'API request (progress)');
+      const pollStart = Date.now();
       const response = await fetch(url, {
         headers: { 'Authorization': `Bearer ${this.apiToken}` },
       });
+      const pollDuration = Date.now() - pollStart;
 
       if (!response.ok) {
+        log.info({ status: response.status, durationMs: pollDuration, board: boardName, snapshotId }, 'API response (progress)');
         throw new Error(
           `Bright Data progress ${snapshotId}: HTTP ${response.status}`,
         );
@@ -209,9 +216,9 @@ export class BrightDataProvider implements JobProvider {
 
       const data = (await response.json()) as ProgressResponse;
 
-      log.debug(
-        { board: boardName, snapshotId, status: data.status, elapsedMs: elapsed },
-        'Polling snapshot progress',
+      log.info(
+        { status: response.status, durationMs: pollDuration, board: boardName, snapshotId, snapshotStatus: data.status, elapsedMs: elapsed },
+        'API response (progress)',
       );
 
       if (data.status === 'ready') return;
@@ -229,11 +236,15 @@ export class BrightDataProvider implements JobProvider {
   private async downloadSnapshot(snapshotId: string, boardName: string): Promise<unknown[]> {
     const url = `${BASE_URL}/snapshot/${snapshotId}?format=json`;
 
+    log.info({ method: 'GET', board: boardName, snapshotId }, 'API request (download)');
+    const startTime = Date.now();
     const response = await fetch(url, {
       headers: { 'Authorization': `Bearer ${this.apiToken}` },
     });
+    const durationMs = Date.now() - startTime;
 
     if (!response.ok) {
+      log.info({ status: response.status, durationMs, board: boardName, snapshotId }, 'API response (download)');
       throw new Error(
         `Bright Data download ${snapshotId}: HTTP ${response.status}`,
       );
@@ -247,8 +258,8 @@ export class BrightDataProvider implements JobProvider {
     }
 
     log.info(
-      { board: boardName, records: data.length, estimatedCost: `$${(data.length * 0.0015).toFixed(4)}` },
-      'Snapshot downloaded',
+      { status: response.status, durationMs, board: boardName, records: data.length, estimatedCost: `$${(data.length * 0.0015).toFixed(4)}` },
+      'API response (download)',
     );
 
     return data as unknown[];

@@ -64,14 +64,18 @@ export class RemotiveProvider implements JobProvider {
       url.searchParams.set('search', board.keywords);
     }
 
-    log.debug({ board: board.name, url: url.toString() }, 'Fetching category');
+    log.info({ method: 'GET', url: url.toString(), board: board.name }, 'API request');
+    const startTime = Date.now();
     const response = await fetch(url.toString());
+    const durationMs = Date.now() - startTime;
 
     if (!response.ok) {
+      log.info({ status: response.status, durationMs, board: board.name }, 'API response');
       throw new Error(`Remotive ${board.name}: HTTP ${response.status}`);
     }
 
     const data = (await response.json()) as RemotiveResponse;
+    log.info({ status: response.status, durationMs, board: board.name, jobs: data.jobs.length }, 'API response');
 
     return data.jobs.map((job): RawJob => ({
       externalId: String(job.id),
