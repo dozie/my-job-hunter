@@ -8,6 +8,7 @@ greenhouse:
     - { token: "figma", name: "Figma" }
     - { token: "coinbase", name: "Coinbase" }
     - { token: "synctera", name: "Synctera" }
+    - { token: "beaconsoftware", name: "Beacon Software" }
 
 ashby:
   enabled: true
