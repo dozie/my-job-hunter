@@ -1,4 +1,4 @@
-import { eq, ne, and, lt, isNull, sql } from 'drizzle-orm';
+import { eq, ne, and, lt, isNull, inArray, sql } from 'drizzle-orm';
 import pLimit from 'p-limit';
 import { db } from '../db/client.js';
 import { jobs, ingestionLogs } from '../db/schema.js';
@@ -66,7 +66,7 @@ const checkSerpApiExisting: ExistingJobChecker = async (ids: string[]) => {
     .where(
       and(
         eq(jobs.provider, 'serpapi'),
-        sql`${jobs.externalId} = ANY(${ids})`,
+        inArray(jobs.externalId, ids),
       ),
     );
 
