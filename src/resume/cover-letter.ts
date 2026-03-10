@@ -45,20 +45,29 @@ export async function generateCoverLetter(
 
   const response = await anthropic.messages.create({
     model: 'claude-opus-4-6',
-    max_tokens: 2048,
+    max_tokens: 1024,
     messages: [
       {
         role: 'user',
-        content: `Write a compelling, concise cover letter for this job application.
+        content: `Write a cover letter for this job application.
 
 INSTRUCTIONS:
-- Connect the candidate's specific experience to the role requirements
-- Professional tone, 3-4 paragraphs
-- Highlight relevant technical skills and achievements
-- Show genuine understanding of what the company does
-- Do not use generic filler — be specific to this role
-- Do not state specific years of experience
-- Address it generically (no "Dear Hiring Manager" unless you can infer a better address)
+- 2-3 short paragraphs. Don't overdo it.
+- Connect the candidate's experience to the role requirements. Pick the most relevant things, not everything.
+- Professional but human tone.
+- Do not use generic filler. Be specific to this role.
+- Do not state specific years of experience.
+- Address it generically (no "Dear Hiring Manager" unless you can infer a better address).
+
+WRITING STYLE (critical):
+- Write as a thoughtful literature writer. Good prose, not corporate speak.
+- NEVER use dashes (em dash, en dash, or hyphens used as dashes). Use periods or commas instead. Dashes are an AI giveaway.
+- NEVER use these AI phrases: "I'm particularly drawn to", "I'm excited about the opportunity", "aligns perfectly with", "I'm thrilled", "leveraging my expertise", "passionate about", "I believe my unique"
+- Use contractions naturally (I've, I'm, didn't, wasn't).
+- Vary sentence length. Mix short and long. Don't make every sentence the same rhythm.
+- Don't start every sentence with "I".
+- No bullet points, no bold text, no markdown.
+- The output must read like a real person wrote it, not AI.
 
 TARGET JOB:
 Title: ${job.title}
@@ -69,7 +78,7 @@ ${truncatedJD}
 CANDIDATE RESUME:
 ${JSON.stringify(baseResume, null, 2)}
 
-Write the cover letter as plain text. No markdown formatting.`,
+Write the cover letter as plain text.`,
       },
     ],
   });

@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dozie Agbai - Resume</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; color: #333; line-height: 1.5; }
+
+    .header {
+      background: #5a6977;
+      color: white;
+      text-align: center;
+      padding: 30px 20px;
+    }
+    .header h1 { font-size: 28px; letter-spacing: 3px; font-weight: 300; }
+    .header h2 { font-size: 14px; letter-spacing: 2px; font-weight: 300; margin-top: 5px; }
+
+    .container { display: flex; }
+
+    .sidebar {
+      width: 30%;
+      background: #f0f0f0;
+      padding: 25px 20px;
+      min-height: 100vh;
+    }
+    .sidebar h3 {
+      font-size: 13px;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      margin-bottom: 12px;
+      color: #333;
+      border-bottom: 1px solid #ccc;
+      padding-bottom: 5px;
+    }
+    .sidebar .section { margin-bottom: 25px; }
+    .sidebar p { font-size: 12px; margin-bottom: 4px; }
+    .sidebar a { color: #333; text-decoration: none; }
+    .sidebar a:hover { text-decoration: underline; }
+
+    .skills { display: flex; flex-wrap: wrap; gap: 5px; }
+    .skill {
+      font-size: 11px;
+      background: #ddd;
+      padding: 2px 8px;
+      border-radius: 3px;
+    }
+
+    .main {
+      width: 70%;
+      padding: 25px 30px;
+    }
+    .main h3 {
+      font-size: 15px;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      margin-bottom: 15px;
+      color: #333;
+      border-bottom: 2px solid #5a6977;
+      padding-bottom: 5px;
+    }
+    .main .section { margin-bottom: 25px; }
+
+    .summary-text { font-size: 13px; color: #555; }
+
+    .job { margin-bottom: 18px; }
+    .job-header { font-size: 13px; }
+    .job-company { font-size: 12px; color: #666; font-style: italic; margin-bottom: 6px; }
+    .job ul { list-style: disc; margin-left: 18px; }
+    .job li { font-size: 12px; margin-bottom: 4px; }
+
+    .education-item { font-size: 13px; margin-bottom: 8px; }
+
+    @media print {
+      body { font-size: 11px; }
+      .sidebar { background: #f0f0f0 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+      .header { background: #5a6977 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <h1>DOZIE AGBAI</h1>
+    <h2>SOFTWARE ENGINEER</h2>
+  </div>
+  <div class="container">
+    <div class="sidebar">
+      <div class="section">
+        <h3>Contact</h3>
+        <p>Address : Toronto, ON M4M 0E6</p>
+        <p>Phone : 6132652452</p>
+        <p>Email : agbaid@gmail.com</p>
+      </div>
+      <div class="section">
+        <h3>Websites, Portfolios, Profiles</h3>
+        <p><a href="https://linkedin.com/in/dozie-agbai-38329345">linkedin.com/in/dozie-agbai-38329345</a></p>
+      </div>
+      <div class="section">
+        <h3>Skills</h3>
+        <div class="skills">
+            <span class="skill">Java</span>
+            <span class="skill">Python</span>
+            <span class="skill">Go</span>
+            <span class="skill">Ruby</span>
+            <span class="skill">JavaScript/TypeScript</span>
+            <span class="skill">Node.js</span>
+            <span class="skill">Spring Boot</span>
+            <span class="skill">Spring MVC</span>
+            <span class="skill">Junit</span>
+            <span class="skill">Drizzle ORM</span>
+            <span class="skill">Discord.js</span>
+            <span class="skill">AWS</span>
+            <span class="skill">Google App Engine (GAE)</span>
+            <span class="skill">Docker</span>
+            <span class="skill">MySQL</span>
+            <span class="skill">PostgreSQL</span>
+            <span class="skill">Redis</span>
+            <span class="skill">Firestore</span>
+            <span class="skill">Objectify</span>
+            <span class="skill">DynamoDB</span>
+            <span class="skill">Claude API (LLM)</span>
+            <span class="skill">Agentic Workflows</span>
+            <span class="skill">Apache Kafka</span>
+            <span class="skill">Maven</span>
+            <span class="skill">Atlassian JIRA</span>
+            <span class="skill">Confluence</span>
+            <span class="skill">CI/CD</span>
+        </div>
+      </div>
+    </div>
+    <div class="main">
+      <div class="section">
+        <h3>Summary</h3>
+        <p class="summary-text">Software Engineer with expertise in scalable infrastructure architecture, agentic AI application development, and cloud-native deployment on AWS and GCP. Experienced building cost-optimized multi-model AI pipelines, real-time data platforms, and developer tools. Focused on high-impact systems that combine automation intelligence with production-grade reliability.</p>
+      </div>
+      <div class="section">
+        <h3>Work History</h3>
+
+          <div class="job">
+            <div class="job-header">
+              <strong>Software Engineer,</strong> 2025-03 to Present
+            </div>
+            <div class="job-company">Independent - Toronto</div>
+            <ul>
+              <li>Reduced a multi-hour daily job search to minutes by designing an automated ingestion pipeline that aggregates, deduplicates, and ranks opportunities across multiple sources.</li>
+              <li>Designed and implemented a real-time scoring engine for a football prediction platform, processing live match data and recalculating leaderboards across competing leagues as games finish.</li>
+              <li>Deployed and maintained both applications in production, setting up observability and alerting to catch issues early and keep scheduled pipelines running reliably without manual intervention.</li>
+            </ul>
+          </div>
+          <div class="job">
+            <div class="job-header">
+              <strong>Senior Software Engineer,</strong> 2022-09 to 2025-03
+            </div>
+            <div class="job-company">Okta - Toronto</div>
+            <ul>
+              <li>Engineered and operated a distributed platform handling 10M+ user data imports per day, achieving sub-second processing latency and uninterrupted customer access worldwide.</li>
+              <li>Improved product reliability and user trust by developing a scalable, observable data management framework that increased system availability, reduced outages, and accelerated root-cause analysis through real-time monitoring and alerting.</li>
+              <li>Mentored junior developers, fostering their understanding and application of best practices through code reviews and reoccurring meetings.</li>
+              <li>Reduced average query response time by 40% and improved system throughput by 60% by optimizing SQL queries and introducing asynchronous processing, leading to faster, more reliable user interactions.</li>
+              <li>Led cross-functional collaboration to design and implement enterprise-grade entitlement and access control systems, bolstering security and compliance across the platform.</li>
+              <li>Spearheaded the creation of an asynchronous user provisioning pipeline, decoupling onboarding from app setup to increase scalability, reduce latency, and improve customer experience.</li>
+            </ul>
+          </div>
+          <div class="job">
+            <div class="job-header">
+              <strong>Senior Software Engineer,</strong> 2019-01 to 2022-06
+            </div>
+            <div class="job-company">Vouchr - Toronto</div>
+            <ul>
+              <li>Contributed to the development of a cloud-based payments personalization platform.</li>
+              <li>Led the design of a scalable microservices architecture and a redesigned job framework, improving platform performance, reliability, and customer experience at scale.</li>
+              <li>Built and maintained high-reliability CI/CD pipelines with Jenkins, achieving a 100% deployment success rate and accelerating delivery.</li>
+              <li>Mentored junior engineers through code reviews and pair programming, elevating code quality and team effectiveness.</li>
+              <li>Delivered measurable impact by optimizing server response times and implementing asynchronous job processing, directly contributing to client acquisition growth.</li>
+            </ul>
+          </div>
+          <div class="job">
+            <div class="job-header">
+              <strong>Full Stack Developer,</strong> 2017-02 to 2018-11
+            </div>
+            <div class="job-company">Limelight Platforms - Toronto</div>
+            <ul>
+              <li>Contributed to the development of enterprise software for experiential marketing, enabling brands to design, manage, and measure live events and consumer interactions that drove engagement and sales.</li>
+              <li>Designed and developed advanced software projects for deployment in various products.</li>
+              <li>Partnered with product management to evaluate requirements and deliver intuitive, high-quality software interfaces that exceeded client expectations.</li>
+              <li>Developed and integrated application components using Spring MVC, improving maintainability, reliability, and scalability of the platform.</li>
+              <li>Contributed as a core member of a three-person team to design and launch the v2 dashboard application, significantly enhancing customer experience and product adoption.</li>
+            </ul>
+          </div>
+          <div class="job">
+            <div class="job-header">
+              <strong>Software Engineer,</strong> 2016-05 to 2016-11
+            </div>
+            <div class="job-company">WorkJam - Montreal</div>
+            <ul>
+              <li>Developed robust Java code for enterprise applications.</li>
+              <li>Wrote, modified, and maintained software documentation and specifications.</li>
+              <li>Efficiently developed high-quality code by creating unit tests where necessary to ensure automated testing.</li>
+              <li>Key Achievements: Successfully built a microservice to integrate with clients.</li>
+            </ul>
+          </div>
+      </div>
+      <div class="section">
+        <h3>Education</h3>
+
+          <div class="education-item">
+            <strong>Bachelor of Science: Computer Science,</strong> 2012.
+            <br/>Carleton University - Ottawa, Canada.
+          </div>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

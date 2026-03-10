@@ -45,19 +45,27 @@ export async function generateWhyCompany(
 
   const response = await anthropic.messages.create({
     model: 'claude-opus-4-6',
-    max_tokens: 1024,
+    max_tokens: 512,
     messages: [
       {
         role: 'user',
         content: `Generate a "Why do you want to work at ${job.company}?" response for a job application.
 
 INSTRUCTIONS:
-- Identify the company's mission, product, tech stack, and culture cues from the job description
-- Connect the candidate's specific experience and skills to what the company is building
-- Show genuine enthusiasm backed by concrete alignment (not generic flattery)
-- Conversational yet professional tone — this is for pasting into an application form field
-- 2-3 paragraphs, ready to use as-is
-- Do not state specific years of experience
+- 2 paragraphs max, about 5 lines total. Keep it tight.
+- Connect the candidate's experience to what the company is building. Pick one or two specific things from the JD, not everything.
+- Conversational and professional. This is for pasting into an application form field.
+- Do not state specific years of experience.
+
+WRITING STYLE (critical):
+- Write as a thoughtful literature writer. Good prose, not corporate speak.
+- NEVER use dashes (em dash, en dash, or hyphens used as dashes). Use periods or commas instead. Dashes are an AI giveaway.
+- NEVER use these AI phrases: "I'm particularly drawn to", "I'm excited about the opportunity", "aligns perfectly with", "I'm thrilled", "leveraging my expertise", "passionate about", "I believe my unique"
+- Use contractions naturally (I've, I'm, didn't, wasn't).
+- Vary sentence length. Mix short and long. Don't make every sentence the same rhythm.
+- Don't start every sentence with "I".
+- No bullet points, no bold text, no markdown.
+- The output must read like a real person wrote it, not AI.
 
 TARGET JOB:
 Title: ${job.title}
@@ -68,7 +76,7 @@ ${truncatedJD}
 CANDIDATE RESUME:
 ${JSON.stringify(baseResume, null, 2)}
 
-Write the response as plain text. No markdown formatting.`,
+Write the response as plain text.`,
       },
     ],
   });

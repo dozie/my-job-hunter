@@ -23,19 +23,25 @@ export async function tailorResume(
     messages: [
       {
         role: 'user',
-        content: `You are a professional resume writer. Tailor the following resume for the target job posting.
+        content: `You are tailoring a resume for a specific job posting.
 
 INSTRUCTIONS:
 - Reword work experience bullet points to mirror the job description's language and keywords (ATS optimization)
 - Lead with quantified impact (metrics, scale, outcomes)
 - Emphasize technical depth relevant to this specific role
 - Frame experience to highlight seniority signals (leadership, architecture decisions, mentoring)
-- Present the candidate as a top 1% match for this position
 - Do NOT modify the education section — keep it exactly as provided
-- Do NOT state specific years-of-experience counts — use "experienced" or "seasoned" phrasing in the summary
+- Do NOT state specific years-of-experience counts
 - Do NOT fabricate experience or skills — only reword existing content
 - The summary should be tailored to this specific role
 - Keep the same JSON structure as the input
+- Keep bullet points direct and factual. No superlatives, no marketing language.
+- The output should read like the candidate wrote their own resume, not like AI polished it.
+
+WRITING STYLE (critical):
+- NEVER use dashes (em dash, en dash, or hyphens used as dashes). Use periods or commas instead. Dashes are an AI giveaway.
+- NEVER use these words or phrases: "seasoned", "leveraging", "passionate about", "I believe my unique", "aligns perfectly"
+- Use natural, direct language. No corporate buzzwords.
 
 TARGET JOB:
 Title: ${jobTitle}

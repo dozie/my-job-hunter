@@ -1,0 +1,233 @@
+{
+  "picture": {
+    "hidden": true,
+    "url": "",
+    "size": 80,
+    "rotation": 0,
+    "aspectRatio": 1,
+    "borderRadius": 0,
+    "borderColor": "rgba(0, 0, 0, 0.5)",
+    "borderWidth": 0,
+    "shadowColor": "rgba(0, 0, 0, 0.5)",
+    "shadowWidth": 0
+  },
+  "basics": {
+    "name": "Dozie Agbai",
+    "headline": "Software Engineer",
+    "email": "agbaid@gmail.com",
+    "phone": "6132652452",
+    "location": "Toronto, ON M4M 0E6",
+    "website": { "url": "", "label": "" },
+    "customFields": []
+  },
+  "summary": {
+    "title": "Summary",
+    "columns": 1,
+    "hidden": false,
+    "content": "<p>Software Engineer with expertise in scalable infrastructure architecture, agentic AI application development, and cloud-native deployment on AWS and GCP. Experienced building cost-optimized multi-model AI pipelines, real-time data platforms, and developer tools. Focused on high-impact systems that combine automation intelligence with production-grade reliability.</p>"
+  },
+  "sections": {
+    "profiles": {
+      "title": "Profiles",
+      "columns": 1,
+      "hidden": false,
+      "items": [
+        {
+          "id": "ff5926e1-540e-462a-b388-5ff8f6147cc8",
+          "hidden": false,
+          "icon": "linkedin-logo",
+          "network": "LinkedIn",
+          "username": "dozie-agbai-38329345",
+          "website": { "url": "https://linkedin.com/in/dozie-agbai-38329345", "label": "" }
+        }
+      ]
+    },
+    "experience": {
+      "title": "Experience",
+      "columns": 1,
+      "hidden": false,
+      "items": [
+        {
+          "id": "1009e324-30c2-4d77-927b-8022d4932656",
+          "hidden": false,
+          "company": "Independent",
+          "position": "Software Engineer",
+          "location": "Toronto",
+          "period": "Mar 2025 - Present",
+          "website": { "url": "", "label": "" },
+          "description": "<ul><li>Reduced a multi-hour daily job search to minutes by designing an automated ingestion pipeline that aggregates, deduplicates, and ranks opportunities across multiple sources.</li><li>Designed and implemented a real-time scoring engine for a football prediction platform, processing live match data and recalculating leaderboards across competing leagues as games finish.</li><li>Deployed and maintained both applications in production, setting up observability and alerting to catch issues early and keep scheduled pipelines running reliably without manual intervention.</li></ul>"
+        },
+        {
+          "id": "ac095290-055c-459a-97c8-96005d7921b7",
+          "hidden": false,
+          "company": "Okta",
+          "position": "Senior Software Engineer",
+          "location": "Toronto",
+          "period": "Sep 2022 - Mar 2025",
+          "website": { "url": "", "label": "" },
+          "description": "<ul><li>Engineered and operated a distributed platform handling 10M+ user data imports per day, achieving sub-second processing latency and uninterrupted customer access worldwide.</li><li>Improved product reliability and user trust by developing a scalable, observable data management framework that increased system availability, reduced outages, and accelerated root-cause analysis through real-time monitoring and alerting.</li><li>Mentored junior developers, fostering their understanding and application of best practices through code reviews and reoccurring meetings.</li><li>Reduced average query response time by 40% and improved system throughput by 60% by optimizing SQL queries and introducing asynchronous processing, leading to faster, more reliable user interactions.</li><li>Led cross-functional collaboration to design and implement enterprise-grade entitlement and access control systems, bolstering security and compliance across the platform.</li><li>Spearheaded the creation of an asynchronous user provisioning pipeline, decoupling onboarding from app setup to increase scalability, reduce latency, and improve customer experience.</li></ul>"
+        },
+        {
+          "id": "9fbcf79a-7336-4059-afea-8eaf5b30611d",
+          "hidden": false,
+          "company": "Vouchr",
+          "position": "Senior Software Engineer",
+          "location": "Toronto",
+          "period": "Jan 2019 - Jun 2022",
+          "website": { "url": "", "label": "" },
+          "description": "<ul><li>Contributed to the development of a cloud-based payments personalization platform.</li><li>Led the design of a scalable microservices architecture and a redesigned job framework, improving platform performance, reliability, and customer experience at scale.</li><li>Built and maintained high-reliability CI/CD pipelines with Jenkins, achieving a 100% deployment success rate and accelerating delivery.</li><li>Mentored junior engineers through code reviews and pair programming, elevating code quality and team effectiveness.</li><li>Delivered measurable impact by optimizing server response times and implementing asynchronous job processing, directly contributing to client acquisition growth.</li></ul>"
+        },
+        {
+          "id": "3d0918ec-fcc0-49c3-8171-09c4cf04167f",
+          "hidden": false,
+          "company": "Limelight Platforms",
+          "position": "Full Stack Developer",
+          "location": "Toronto",
+          "period": "Feb 2017 - Nov 2018",
+          "website": { "url": "", "label": "" },
+          "description": "<ul><li>Contributed to the development of enterprise software for experiential marketing, enabling brands to design, manage, and measure live events and consumer interactions that drove engagement and sales.</li><li>Designed and developed advanced software projects for deployment in various products.</li><li>Partnered with product management to evaluate requirements and deliver intuitive, high-quality software interfaces that exceeded client expectations.</li><li>Developed and integrated application components using Spring MVC, improving maintainability, reliability, and scalability of the platform.</li><li>Contributed as a core member of a three-person team to design and launch the v2 dashboard application, significantly enhancing customer experience and product adoption.</li></ul>"
+        },
+        {
+          "id": "2ebd33f8-8bb1-4962-b41d-6e9b364f8878",
+          "hidden": false,
+          "company": "WorkJam",
+          "position": "Software Engineer",
+          "location": "Montreal",
+          "period": "May 2016 - Nov 2016",
+          "website": { "url": "", "label": "" },
+          "description": "<ul><li>Developed robust Java code for enterprise applications.</li><li>Wrote, modified, and maintained software documentation and specifications.</li><li>Efficiently developed high-quality code by creating unit tests where necessary to ensure automated testing.</li><li>Key Achievements: Successfully built a microservice to integrate with clients.</li></ul>"
+        }
+      ]
+    },
+    "education": {
+      "title": "Education",
+      "columns": 1,
+      "hidden": false,
+      "items": [
+        {
+          "id": "c7abf7e8-bb12-4d6c-bdd4-1eb16b17cabd",
+          "hidden": false,
+          "school": "Carleton University",
+          "degree": "Bachelor of Science",
+          "area": "Computer Science",
+          "grade": "",
+          "location": "Ottawa, Canada",
+          "period": "2012",
+          "website": { "url": "", "label": "" },
+          "description": ""
+        }
+      ]
+    },
+    "skills": {
+      "title": "Skills",
+      "columns": 2,
+      "hidden": false,
+      "items": [
+        { "id": "4ec5a826-3252-4292-a024-f3a3b4466dfb", "hidden": false, "icon": "", "name": "Languages", "proficiency": "", "level": 0, "keywords": ["Java", "Python", "Go", "Ruby", "JavaScript/TypeScript"] },
+        { "id": "414f0ca2-6b6d-498b-9d35-82d81898c7cb", "hidden": false, "icon": "", "name": "Frameworks", "proficiency": "", "level": 0, "keywords": ["Spring Boot", "Spring MVC", "Node.js", "Drizzle ORM", "Discord.js", "Junit"] },
+        { "id": "09393b7d-d0a9-4600-818f-e0ad23f95024", "hidden": false, "icon": "", "name": "Cloud & Infrastructure", "proficiency": "", "level": 0, "keywords": ["AWS", "Google App Engine", "Docker", "CI/CD", "Apache Kafka"] },
+        { "id": "03e9a5ac-5dc1-44c5-a5ae-7bfff9d04d7c", "hidden": false, "icon": "", "name": "Databases", "proficiency": "", "level": 0, "keywords": ["PostgreSQL", "MySQL", "Redis", "DynamoDB", "Firestore"] },
+        { "id": "eac3fd05-8d94-4a44-8bd1-e08c29dab6b1", "hidden": false, "icon": "", "name": "AI / LLM", "proficiency": "", "level": 0, "keywords": ["Claude API", "Prompt Engineering", "Tool Use", "Agentic Workflows"] },
+        { "id": "22d1080a-310b-4be8-a105-4afe54867ae0", "hidden": false, "icon": "", "name": "Tools", "proficiency": "", "level": 0, "keywords": ["Maven", "Atlassian JIRA", "Confluence", "Objectify"] }
+      ]
+    },
+    "projects": {
+      "title": "Projects",
+      "columns": 1,
+      "hidden": true,
+      "items": []
+    },
+    "languages": {
+      "title": "Languages",
+      "columns": 1,
+      "hidden": true,
+      "items": []
+    },
+    "certifications": {
+      "title": "Certifications",
+      "columns": 1,
+      "hidden": true,
+      "items": []
+    },
+    "awards": {
+      "title": "Awards",
+      "columns": 1,
+      "hidden": true,
+      "items": []
+    },
+    "publications": {
+      "title": "Publications",
+      "columns": 1,
+      "hidden": true,
+      "items": []
+    },
+    "volunteer": {
+      "title": "Volunteer",
+      "columns": 1,
+      "hidden": true,
+      "items": []
+    },
+    "interests": {
+      "title": "Interests",
+      "columns": 1,
+      "hidden": true,
+      "items": []
+    },
+    "references": {
+      "title": "References",
+      "columns": 1,
+      "hidden": true,
+      "items": []
+    }
+  },
+  "customSections": [],
+  "metadata": {
+    "template": "onyx",
+    "layout": {
+      "sidebarWidth": 35,
+      "pages": [
+        {
+          "fullWidth": false,
+          "main": ["summary", "experience"],
+          "sidebar": ["profiles", "skills", "education"]
+        }
+      ]
+    },
+    "page": {
+      "gapX": 4,
+      "gapY": 6,
+      "marginX": 14,
+      "marginY": 12,
+      "format": "letter",
+      "locale": "en-US",
+      "hideIcons": false
+    },
+    "colors": {
+      "primary": "rgba(30, 58, 95, 1)",
+      "text": "rgba(0, 0, 0, 1)",
+      "background": "rgba(255, 255, 255, 1)"
+    },
+    "level": {
+      "icon": "star",
+      "type": "hidden"
+    },
+    "typography": {
+      "body": {
+        "fontFamily": "IBM Plex Serif",
+        "fontWeights": ["400", "500"],
+        "fontSize": 10,
+        "lineHeight": 1.5
+      },
+      "heading": {
+        "fontFamily": "IBM Plex Serif",
+        "fontWeights": ["600"],
+        "fontSize": 14,
+        "lineHeight": 1.5
+      }
+    },
+    "css": {
+      "enabled": false,
+      "value": ""
+    }
+  }
+}
