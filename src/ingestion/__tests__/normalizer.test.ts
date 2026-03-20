@@ -3,6 +3,7 @@ import {
   normalizeCompany,
   normalizeTitle,
   buildCanonicalKey,
+  jaccardSimilarity,
   normalizeJobs,
 } from '../normalizer.js';
 import type { RawJob } from '../providers/base.js';
@@ -146,5 +147,48 @@ describe('normalizeJobs', () => {
     const result = normalizeJobs([raw], 'test');
     const expectedKey = buildCanonicalKey('Stripe Inc.', 'Sr. Backend Engineer', 'Build APIs');
     expect(result[0].canonicalKey).toBe(expectedKey);
+  });
+});
+
+describe('jaccardSimilarity', () => {
+  it('returns 1.0 for identical strings', () => {
+    expect(jaccardSimilarity('hello world', 'hello world')).toBe(1);
+  });
+
+  it('returns 0.0 for completely different words', () => {
+    expect(jaccardSimilarity('alpha beta', 'gamma delta')).toBe(0);
+  });
+
+  it('computes correct ratio for partial overlap', () => {
+    // sets: {a,b,c} vs {b,c,d} → intersection {b,c} = 2, union {a,b,c,d} = 4
+    expect(jaccardSimilarity('a b c', 'b c d')).toBe(0.5);
+  });
+
+  it('is case insensitive', () => {
+    expect(jaccardSimilarity('Hello World', 'hello world')).toBe(1);
+  });
+
+  it('handles extra whitespace', () => {
+    expect(jaccardSimilarity('  a  b  ', 'a b')).toBe(1);
+  });
+
+  it('returns 1.0 for two empty strings', () => {
+    expect(jaccardSimilarity('', '')).toBe(1);
+  });
+
+  it('returns 0.0 when one string is empty', () => {
+    expect(jaccardSimilarity('hello', '')).toBe(0);
+  });
+
+  it('scores high for same content with minor formatting differences', () => {
+    const descA = 'We are looking for a senior software engineer to build scalable backend systems using TypeScript and PostgreSQL';
+    const descB = 'We are looking for a senior software engineer to build scalable backend systems using TypeScript and PostgreSQL. Apply now!';
+    expect(jaccardSimilarity(descA, descB)).toBeGreaterThanOrEqual(0.8);
+  });
+
+  it('scores low for genuinely different job descriptions', () => {
+    const descA = 'Build frontend React components with CSS and design systems for our consumer mobile app';
+    const descB = 'Architect distributed backend infrastructure using Kubernetes Docker and Terraform for cloud deployment';
+    expect(jaccardSimilarity(descA, descB)).toBeLessThan(0.3);
   });
 });

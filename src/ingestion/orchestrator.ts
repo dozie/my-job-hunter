@@ -15,7 +15,7 @@ import { SerpApiProvider } from './providers/serpapi.js';
 import type { ExistingJobChecker, MonthlyUsageChecker, SerpApiConfig } from './providers/serpapi.js';
 import { env } from '../config/env.js';
 import { passesRoleFilter, passesLocationFilter } from './filters.js';
-import { normalizeJobs, normalizeCompany, normalizeTitle } from './normalizer.js';
+import { normalizeJobs, normalizeCompany, normalizeTitle, jaccardSimilarity } from './normalizer.js';
 import { analyzeJob } from '../scoring/analyzer.js';
 import { scoreJob } from '../scoring/scorer.js';
 import { shouldGenerateSummary, generateSummary } from '../scoring/summarizer.js';
@@ -209,7 +209,7 @@ async function insertNewJobs(normalized: NewJob[]): Promise<InsertResult> {
           } else {
             const companyTitlePrefix = `${normalizeCompany(job.company!)}::${normalizeTitle(job.title!)}::`;
             const sameTitle = await db
-              .select({ id: jobs.id, provider: jobs.provider })
+              .select({ id: jobs.id, provider: jobs.provider, description: jobs.description })
               .from(jobs)
               .where(
                 and(
@@ -220,17 +220,41 @@ async function insertNewJobs(normalized: NewJob[]): Promise<InsertResult> {
               .limit(1);
 
             if (sameTitle.length > 0) {
-              log.warn(
-                {
-                  newId: result[0].id,
-                  existingId: sameTitle[0].id,
-                  existingProvider: sameTitle[0].provider,
-                  provider: job.provider,
-                  company: job.company,
-                  title: job.title,
-                },
-                'Same company+title but different description — kept as separate job',
-              );
+              const bothMissingDesc = !job.description && !sameTitle[0].description;
+              const similarity = (job.description && sameTitle[0].description)
+                ? jaccardSimilarity(job.description, sameTitle[0].description)
+                : 0;
+
+              if (bothMissingDesc || similarity >= 0.8) {
+                await db
+                  .update(jobs)
+                  .set({ likelyDuplicateOfId: sameTitle[0].id })
+                  .where(eq(jobs.id, result[0].id));
+                duplicatesFound++;
+                log.info(
+                  {
+                    duplicateId: result[0].id,
+                    primaryId: sameTitle[0].id,
+                    similarity: bothMissingDesc ? 'no-desc' : similarity.toFixed(2),
+                    provider: job.provider,
+                    company: job.company,
+                    title: job.title,
+                  },
+                  'Cross-provider duplicate found via Jaccard similarity',
+                );
+              } else {
+                log.warn(
+                  {
+                    newId: result[0].id,
+                    existingId: sameTitle[0].id,
+                    score: similarity.toFixed(2),
+                    provider: job.provider,
+                    company: job.company,
+                    title: job.title,
+                  },
+                  'Same company+title but low similarity — kept as separate job',
+                );
+              }
             }
           }
         }

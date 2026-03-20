@@ -45,6 +45,16 @@ export function buildCanonicalKey(company: string, title: string, description?: 
   return `${normalizeCompany(company)}::${normalizeTitle(title)}::${descriptionFingerprint(description)}`;
 }
 
+/** Jaccard similarity: word-level overlap between two strings (0.0–1.0) */
+export function jaccardSimilarity(a: string, b: string): number {
+  const setA = new Set(a.toLowerCase().replace(/\s+/g, ' ').trim().split(' '));
+  const setB = new Set(b.toLowerCase().replace(/\s+/g, ' ').trim().split(' '));
+  const intersection = new Set([...setA].filter(w => setB.has(w)));
+  const union = new Set([...setA, ...setB]);
+  if (union.size === 0) return 1;
+  return intersection.size / union.size;
+}
+
 /** Detect remote eligibility from location/description text */
 function detectRemote(location?: string, description?: string, remoteIndicators?: string[]): boolean {
   if (!remoteIndicators || remoteIndicators.length === 0) return false;
