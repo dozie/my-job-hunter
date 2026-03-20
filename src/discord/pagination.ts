@@ -8,7 +8,7 @@ import {
 } from 'discord.js';
 
 const PAGE_SIZE = 5;
-const COLLECTOR_TIMEOUT = 120_000; // 2 minutes
+const COLLECTOR_TIMEOUT = 300_000; // 5 minutes idle
 
 export async function sendPaginatedEmbeds(
   interaction: ChatInputCommandInteraction,
@@ -35,7 +35,7 @@ export async function sendPaginatedEmbeds(
 
   const collector = reply.createMessageComponentCollector({
     componentType: ComponentType.Button,
-    time: COLLECTOR_TIMEOUT,
+    idle: COLLECTOR_TIMEOUT,
   });
 
   collector.on('collect', async (i) => {
